@@ -127,6 +127,24 @@ lemma kernel_apply_kernel_of [simp]:
   using assms apply auto
   done
 
+text \<open> Homogeneous kernel \<close>
+typedef 'a hkernel = "{K :: ('a, 'a) kernel. kernel_source K = kernel_target K}"
+  morphisms from_hkernel hkernel
+  by (simp, metis source_kernel_of target_kernel_of)
+
+declare [[coercion from_hkernel]]
+
+definition hkernel_space :: "'a hkernel \<Rightarrow> 'a measure" where
+[simp]: "hkernel_space K \<equiv> kernel_source (from_hkernel K)"
+
+lemma hkernel_source_eq_target: 
+  "kernel_source (from_hkernel K) = kernel_target (from_hkernel K)"
+  using from_hkernel by auto
+
+lemma from_hkernel_kernel_of_inverse [simp]:
+  "from_hkernel (hkernel (kernel_of M M \<kappa>)) = (kernel_of M M \<kappa>)"
+  by (simp add: hkernel_inverse)
+
 definition kernel_measure :: "('a, 'b) kernel \<Rightarrow> 'a \<Rightarrow> 'b measure" where
 "kernel_measure K \<omega> = measure_of (space (kernel_target K)) (sets (kernel_target K)) (kernel K \<omega>)"
 
@@ -425,6 +443,11 @@ next
     unfolding countably_additive_def
     by (auto simp: suminf_indicator)
 qed
+
+(* Dirac delta *)
+theorem return_kernel[simp]: "transition_kernel M M (return M)"
+  apply (rule transition_kernelI)
+  by (force, metis measure_space sets_return space_return)
 
 lemma emeasure_transition_kernel: "transition_kernel M M' (\<lambda>\<omega> A. emeasure M' A)"
   apply unfold_locales
