@@ -1,5 +1,5 @@
 theory Stochastic_Process
-  imports Markov_Semigroup Explorer.Explorer
+  imports Markov_Semigroup
 begin
 
 text \<open> A stochastic process is an indexed collection of random variables. For compatibility with 
@@ -71,9 +71,6 @@ proof (intro projective_family.intro)
   qed
 qed (rule prob_space_distributions)
 
-term return
-
-
 typedef ('t, 'a, 'b) stochastic_process = "{(M :: 'a measure, M' :: 'b measure, I :: 't set, X :: 't \<Rightarrow> 'a \<Rightarrow> 'b).
    stochastic_process M M' X}"
 proof
@@ -82,29 +79,25 @@ proof
     by (simp add: prob_space_return prob_space.stochastic_processI)
 qed
 
-definition proc_index :: "('t,'a,'b) stochastic_process \<Rightarrow> 't set" where
-"proc_index X = fst (snd (snd (Rep_stochastic_process X)))"
-
 definition proc_source :: "('t,'a,'b) stochastic_process \<Rightarrow> 'a measure" where
 "proc_source X = fst (Rep_stochastic_process X)"
 
+interpretation proc_source: prob_space "proc_source X"
+  by (induction, simp add: proc_source_def Abs_stochastic_process_inverse case_prod_beta' stochastic_process_def)
+
 definition proc_target :: "('t,'a,'b) stochastic_process \<Rightarrow> 'b measure" where
 "proc_target X = fst (snd (Rep_stochastic_process X))"
+
+definition proc_index :: "('t,'a,'b) stochastic_process \<Rightarrow> 't set" where
+"proc_index X = fst (snd (snd (Rep_stochastic_process X)))"
 
 definition process :: "('t,'a,'b) stochastic_process \<Rightarrow> 't \<Rightarrow> 'a \<Rightarrow> 'b" where
 "process X = snd (snd (snd (Rep_stochastic_process X)))"
 
 declare [[coercion process]]
 
-(* Quotient type would make things unnecessarily difficult
-
-definition "on_index_equiv X Y \<equiv> proc_index X = proc_index Y \<and>
-  (sets (proc_source X) = sets (proc_source Y)) \<and> (sets (proc_target X) = sets (proc_target Y)) \<and>
-  (\<forall>i \<in>proc_index X. process X i = process Y i)"
-
-quotient_type ('t, 'a, 'b) stochastic_process = "('t, 'a, 'b) stochastic_process" / on_index_equiv
-  unfolding on_index_equiv_def by (intro equivpI reflpI sympI transpI; simp)
-*)
+definition process_of :: "'a measure \<Rightarrow> 'b measure \<Rightarrow> 't set \<Rightarrow> ('t \<Rightarrow> 'a \<Rightarrow> 'b) \<Rightarrow> ('t,'a,'b) stochastic_process"
+  where "process_of M M' I X \<equiv> Abs_stochastic_process (M, M', I, X)"
 
 locale polish_stochastic = stochastic_process M "borel :: 'b::polish_space measure" I X
   for M and I and X
@@ -188,31 +181,236 @@ definition (in prob_space) "stationary_increments M' X \<longleftrightarrow>
 (\<forall>t1 t2 k. t1 > 0 \<and> t2 > 0 \<and> k > 0 \<longrightarrow> 
      distr M M' (\<lambda>v. X (t1 + k) v - X t1 v) = distr M M' (\<lambda>v. X (t2 + k) v - X t2 v))"
 
-definition compatible_processes :: "('t,'a,'b) stochastic_process \<Rightarrow> ('t,'a,'b) stochastic_process \<Rightarrow> bool" where
-"compatible_processes X Y \<longleftrightarrow> sets (proc_source X) = sets (proc_source Y) \<and> sets (proc_target X) = sets (proc_target Y)
+text \<open> Processes on the same source measure space, with the same index space, but not necessarily the same
+  target measure since we only care about the measurable target space, not the measure \<close>
+definition compatible :: "('t,'a,'b) stochastic_process \<Rightarrow> ('t,'a,'b) stochastic_process \<Rightarrow> bool" where
+"compatible X Y \<longleftrightarrow> proc_source X = proc_source Y \<and> sets (proc_target X) = sets (proc_target Y)
   \<and> proc_index X = proc_index Y"
 
+lemma
+  assumes "compatible X Y"
+  shows
+    compatible_source: "proc_source X = proc_source Y" and
+    compatible_target: "sets (proc_target X) = sets (proc_target Y)" and
+    compatible_index: "proc_index X = proc_index Y"
+  using assms unfolding compatible_def by blast+
+
+lemma compatible_refl [simp]: "compatible X X"
+  unfolding compatible_def by blast
+
+lemma compatible_sym: "compatible X Y \<Longrightarrow> compatible Y X"
+  unfolding compatible_def by argo
+
+lemma compatible_trans:
+  assumes "compatible X Y" "compatible Y Z"
+    shows "compatible X Z"
+  using assms unfolding compatible_def by argo
+
 definition modification :: "('t,'a,'b) stochastic_process \<Rightarrow> ('t,'a,'b) stochastic_process \<Rightarrow> bool" where
-"modification X Y \<longleftrightarrow> compatible_processes X Y \<and> (\<forall>t \<in> proc_index X. AE x in proc_source X. X t x = Y t x)"
+"modification X Y \<longleftrightarrow> compatible X Y \<and> (\<forall>t \<in> proc_index X. AE x in proc_source X. X t x = Y t x)"
 
 lemma modificationI:
-  assumes "compatible_processes X Y" "(\<forall>t \<in> proc_index X. AE x in proc_source X. X t x = Y t x)"
+  assumes "compatible X Y" "(\<forall>t \<in> proc_index X. AE x in proc_source X. X t x = Y t x)"
   shows "modification X Y"
   unfolding modification_def using assms by blast
 
+lemma modificationD:
+  assumes "modification X Y"
+  shows "compatible X Y"
+    and "\<And>t. t \<in> proc_index X \<Longrightarrow> AE x in proc_source X. X t x = Y t x"
+  using assms unfolding modification_def by blast+
+
+lemma modification_refl [simp]: "modification X X"
+  by (simp add: modificationI)
+
+lemma modification_sym: "modification X Y \<Longrightarrow> modification Y X"
+proof (rule modificationI, safe)
+  assume *: "modification X Y"
+  then show compat: "compatible Y X"
+    using compatible_sym modificationD(1) by blast
+  fix t assume "t \<in> proc_index Y"
+  then have "t \<in> proc_index X"
+    using compatible_index[OF compat] by blast
+  have "AE x in proc_source Y. X t x = Y t x"
+    using modificationD(2)[OF * \<open>t \<in> proc_index X\<close>] compatible_source[OF compat] by argo
+  then show "AE x in proc_source Y. Y t x = X t x"
+    by force
+qed
+
+lemma modification_trans:
+  assumes "modification X Y" "modification Y Z"
+  shows "modification X Z"
+proof (intro modificationI, safe)
+  show "compatible X Z"
+    using compatible_trans modificationD(1) assms by blast
+  fix t assume t: "t \<in> proc_index X"
+  have XY: "AE x in proc_source X. process X t x = process Y t x"
+    by (fact modificationD(2)[OF assms(1) t])
+  have "t \<in> proc_index Y" "proc_source X = proc_source Y"
+    using compatible_index compatible_source assms(1) modificationD(1) t by blast+
+  then have "AE x in proc_source X. process Y t x = process Z t x"
+    using modificationD(2)[OF assms(2)] by presburger
+  then show "AE x in proc_source X. process X t x = process Z t x"
+    using XY by fastforce
+qed
+
 definition indistinguishable :: "('t,'a,'b) stochastic_process \<Rightarrow> ('t,'a,'b) stochastic_process \<Rightarrow> bool" where
-"indistinguishable X Y \<longleftrightarrow> compatible_processes X Y \<and> (\<exists>N \<in> sets (proc_source X). \<forall>t \<in> proc_index X. {x. X t x \<noteq> Y t x} \<subseteq> N)"
+"indistinguishable X Y \<longleftrightarrow> compatible X Y \<and> (\<exists>N \<in> null_sets (proc_source X).
+  \<forall>t \<in> proc_index X. {x \<in> space (proc_source X). X t x \<noteq> Y t x} \<subseteq> N)"
 
 lemma indistinguishableI:
-  assumes "compatible_processes X Y" "(\<exists>N \<in> sets (proc_source X). \<forall>t \<in> proc_index X. {x. X t x \<noteq> Y t x} \<subseteq> N)"
+  assumes "compatible X Y" 
+   and "\<exists>N \<in> null_sets (proc_source X). (\<forall>t \<in> proc_index X. {x \<in> space (proc_source X). X t x \<noteq> Y t x} \<subseteq> N)"
   shows "indistinguishable X Y"
   unfolding indistinguishable_def using assms by blast
 
-text \<open> Klenke 21.5 \<close>
+lemma indistinguishable_null_set:
+  assumes "indistinguishable X Y"
+  obtains N where 
+    "N \<in> null_sets (proc_source X)"
+    "\<And>t. t \<in> proc_index X \<Longrightarrow> {x \<in> space (proc_source X). X t x \<noteq> Y t x} \<subseteq> N"
+  using assms unfolding indistinguishable_def by force
 
-lemma
+lemma indistinguishableD:
+  assumes "indistinguishable X Y"
+  shows "compatible X Y"
+    and "\<exists>N \<in> null_sets (proc_source X). (\<forall>t \<in> proc_index X. {x \<in> space (proc_source X). X t x \<noteq> Y t x} \<subseteq> N)"
+  using assms unfolding indistinguishable_def by blast+
+
+lemma indistinguishable_eq_AE:
+  assumes "indistinguishable X Y"
+  shows "AE x in proc_source X. \<forall>t \<in> proc_index X. X t x = Y t x"
+  apply (simp add: eventually_ae_filter)
+  using indistinguishableD(2)[OF assms]
+  by (smt (verit, del_insts) mem_Collect_eq subset_eq)
+
+lemma indistinguishable_refl [simp]: "indistinguishable X X"
+  by (auto intro: indistinguishableI)
+
+lemma indistinguishable_sym: "indistinguishable X Y \<Longrightarrow> indistinguishable Y X"
+  apply (intro indistinguishableI)
+  using compatible_sym indistinguishable_def apply blast
+  by (smt (verit, ccfv_SIG) Collect_cong compatible_index compatible_source indistinguishable_def)
+
+lemma indistinguishable_trans: 
+  assumes "indistinguishable X Y" "indistinguishable Y Z" 
+  shows "indistinguishable X Z"
+proof (intro indistinguishableI)
+  show "compatible X Z"
+    using assms indistinguishableD(1) compatible_trans by blast
+  have eq: "proc_index X = proc_index Y" "proc_source X = proc_source Y"
+    using compatible_index compatible_source indistinguishableD(1)[OF assms(1)] by blast+
+  have "AE x in proc_source X. \<forall>t \<in> proc_index X. X t x = Y t x"
+    by (fact indistinguishable_eq_AE[OF assms(1)])
+  moreover have "AE x in proc_source X. \<forall>t \<in> proc_index X. Y t x = Z t x"
+    apply (subst eq)+
+    by (fact indistinguishable_eq_AE[OF assms(2)])
+  ultimately have "AE x in proc_source X. \<forall>t \<in> proc_index X. X t x = Z t x"
+    using assms by fastforce
+  then obtain N where "N\<in>null_sets (proc_source X)" "{x \<in> space (proc_source X).\<exists>t\<in>proc_index X. process X t x \<noteq> process Z t x} \<subseteq> N"
+    using eventually_ae_filter[of]
+    by (smt (verit) Collect_cong eventually_ae_filter)
+  then show "\<exists>N\<in>null_sets (proc_source X). \<forall>t\<in>proc_index X. {x \<in> space (proc_source X). process X t x \<noteq> process Z t x} \<subseteq> N"
+    by blast
+qed
+
+text \<open> Klenke 21.5(i) \<close>
+
+lemma modification_countable:
   assumes "modification X Y" "countable (proc_index X)"
   shows "indistinguishable X Y"
-  sorry
+proof (rule indistinguishableI)
+  show "compatible X Y"
+    using assms(1) modification_def by auto
+  let ?N = "(\<lambda>t. {x \<in> space (proc_source X). X t x \<noteq> Y t x})"
+  from assms(1) have "\<forall>t \<in> proc_index X. AE x in proc_source X. X t x = Y t x"
+    unfolding modification_def by argo
+  then have "\<And>t. t \<in> proc_index X \<Longrightarrow> \<exists>N \<in> null_sets (proc_source X). ?N t \<subseteq> N"
+    by (subst eventually_ae_filter[symmetric], blast)
+  then have "\<exists>N. \<forall>t \<in> proc_index X. N t \<in> null_sets (proc_source X) \<and> ?N t \<subseteq> N t"
+    by meson
+  then obtain N where N: "\<forall>t \<in> proc_index X. (N t) \<in> null_sets (proc_source X) \<and> ?N t \<subseteq> N t"
+    by blast
+  then have null: "(\<Union>t \<in> proc_index X. N t) \<in> null_sets (proc_source X)"
+    by (simp add: null_sets_UN' assms(2))
+  moreover have "\<forall>t\<in>proc_index X. ?N t \<subseteq> (\<Union>t \<in> proc_index X. N t)"
+    using N by blast 
+  ultimately show "\<exists>N\<in> null_sets (proc_source X). (\<forall>t\<in>proc_index X. ?N t \<subseteq> N)"
+    by blast
+qed
+
+(* definition "right_continuous_on s f \<equiv> \<forall>x \<in> s. continuous (at x within {x<..} \<inter> s) f" *)
+
+text \<open> Klenke 21.5(ii), weakened to regular continuity \<close>
+
+lemma modification_right_continuous:
+  fixes X :: "(real, 'a, 'b :: metric_space) stochastic_process"
+  assumes modification: "modification X Y"
+    and interval: "\<exists>T > 0. proc_index X = {0..T}"
+      and rc: "AE \<omega> in proc_source X. continuous_on (proc_index X) (\<lambda>t. X t \<omega>)"
+                  (is "AE \<omega> in proc_source X. ?cont_X \<omega>")
+              "AE \<omega> in proc_source Y. continuous_on (proc_index Y) (\<lambda>t. Y t \<omega>)"
+                  (is "AE \<omega> in proc_source Y. ?cont_Y \<omega>")
+  shows "indistinguishable X Y"
+proof (rule indistinguishableI)
+  show "compatible X Y"
+    using modification modification_def by blast
+  obtain T where T: "proc_index X = {0..T}" "T > 0"
+    using interval by blast
+  let ?N = "\<lambda>t. {x \<in> space (proc_source X). X t x \<noteq> Y t x}"
+  have 1: "\<forall>t \<in> proc_index X. \<exists>S. ?N t \<subseteq> S \<and> S \<in> null_sets (proc_source X)"
+    using modificationD(2)[OF modification] by (auto simp add: eventually_ae_filter)
+  obtain S where S: "\<forall>t \<in> proc_index X. ?N t \<subseteq> S t
+   \<and> S t \<in> null_sets (proc_source X)"
+    using bchoice[OF 1] by blast
+  have eq: "proc_source X = proc_source Y" "proc_index X = proc_index Y"
+    using \<open>compatible X Y\<close> compatible_source compatible_index by blast+
+  have "AE p in proc_source X. ?cont_X p \<and> ?cont_Y p"
+    apply (rule AE_conjI)
+    using eq rc by argo+
+  then obtain R where R: "R \<subseteq> {p \<in> space (proc_source X). ?cont_X p \<and> ?cont_Y p}"
+    "R \<in> sets (proc_source X)" "measure (proc_source X) R = 1"
+    using proc_source.AE_E_prob by blast
+  let ?I = "\<rat> \<inter> {0..T}"
+  have "countable ?I"
+    using countable_rat by blast
+  {
+    fix t assume "t \<in> proc_index X"
+    then have "?N t \<inter> R \<subseteq> (\<Union>r \<in> ?I. ?N r \<inter> R)"
+    proof (auto simp add: subset_eq)
+      fix p
+      assume *: "t \<in> proc_index X" "p \<in> R" "X t p \<noteq> Y t p"
+      have continuous_p: "continuous_on {0..T} (\<lambda>t. Y t p)"
+           "continuous_on {0..T} (\<lambda>t. X t p)"
+         using R *(2) T(1)[symmetric] eq(2) by auto        
+      then obtain \<epsilon> where e: "\<epsilon> > 0 \<and> \<epsilon> = dist (X t p) (Y t p)"
+        using *(3) by auto
+      {
+        assume "\<not> (\<exists>r\<in> ?I. X r p \<noteq> Y r p)"
+        then have "\<forall>r \<in> ?I. X r p = Y r p"
+          by presburger
+        then have "\<exists>d \<in> ?I. d < \<epsilon> \<and> dist (X t p) (Y t p) < d"
+          using continuous_p sorry (* follows from continuity and connectedness *)
+        then have False
+          using e by force
+      }
+      then show "(\<exists>xa\<in> ?I. process X xa p \<noteq> process Y xa p)"
+        by blast
+    qed
+    also have "... \<subseteq> (\<Union>r \<in> ?I. ?N r)"
+      by blast
+    finally have "?N t \<inter> R \<subseteq> (\<Union>r \<in> ?I. ?N r)" .
+  } note N_tilde = this
+  have null: "(space (proc_source X) - R) \<union> (\<Union>r \<in> ?I. S r) \<in> null_sets (proc_source X)"
+    apply (rule null_sets.Un)
+     apply (smt (verit) R(2,3) AE_iff_null_sets proc_source.prob_compl proc_source.prob_eq_0 sets.Diff sets.top)
+      using \<open>countable ?I\<close> null_sets_UN' S T(1) by blast
+  have "(\<Union>r \<in> proc_index X. S r) \<subseteq> (space (proc_source X) - R) \<union> (\<Union>r \<in> proc_index X. S r)"
+    by blast
+  also have "... \<subseteq> (space (proc_source X) - R) \<union> (\<Union>r \<in> ?I. S r)"
+    using N_tilde S sorry
+  finally show "\<exists>N\<in>null_sets (proc_source X). \<forall>t\<in>proc_index X. {x \<in> space (proc_source X). process X t x \<noteq> process Y t x} \<subseteq> N"
+    by (smt (verit) null S SUP_le_iff order_trans)
+qed
 
 end
