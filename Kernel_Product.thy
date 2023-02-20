@@ -211,8 +211,8 @@ proof (intro transition_kernel.intro)
       using eq measurable_ident_sets apply blast
     done
   then show "(\<lambda>\<omega>\<^sub>0. \<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. indicator A' (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K_2 (\<omega>\<^sub>0, \<omega>\<^sub>1) \<partial>kernel_measure K_1 \<omega>\<^sub>0) \<in> borel_measurable ?M0"
-    apply auto
-    by (smt (verit, best) kernel_measure_integral_measurable local.finite(1) measurable_cong nn_integral_cong snd_conv)
+    apply auto sorry
+    (* by (smt (verit, best) kernel_measure_integral_measurable local.finite(1) measurable_cong nn_integral_cong snd_conv) *)
 next
   fix \<omega>\<^sub>0 assume *: "\<omega>\<^sub>0 \<in> space (kernel_source K_1)"
   have "countably_additive (sets ?\<Omega>\<^sub>2) (?\<kappa> \<omega>\<^sub>0)"
@@ -399,9 +399,11 @@ proof (rule substochastic_kernelI)
     sorry (* MISSING NONEMPTY SPACE, MIGHT NEED CHANGES TO SUBSTOCHASTIC LOCALE. MAKE SOURCE NONEMPTY *)
 qed
 
-text \<open> Klenke Corollary 14.27 \<close>
+definition kernel_semidirect_product :: "'a measure \<Rightarrow> ('a, 'b) kernel \<Rightarrow> ('a \<times> 'b) measure" (infixr "(\<otimes>\<^sub>S)" 70)
+  where "M \<otimes>\<^sub>S K = measure_of (space M \<times> space (kernel_target K)) (sets (M \<Otimes>\<^sub>M kernel_target K))
+  (undefined)" (* Need to extend measure from rectangles *) 
 
-thm PiM_def
+text \<open> Klenke Corollary 14.27 \<close>
 
 corollary kernel_finite_product:
   fixes n I K M
