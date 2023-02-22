@@ -1,5 +1,5 @@
 theory Stochastic_Process
-  imports Markov_Semigroup
+  imports "HOL-Probability.Probability"
 begin
 
 text \<open> A stochastic process is an indexed collection of random variables. For compatibility with 
@@ -18,58 +18,6 @@ lemma (in prob_space) stochastic_processI:
   assumes "\<And>i. random_variable M' (X i)"
     shows "stochastic_process M M' X"
   by (simp add: assms prob_space_axioms stochastic_process_axioms.intro stochastic_process_def)
-
-context stochastic_process begin
-
-text \<open> We define the finite-dimensional distributions of our process. \<close>
-
-definition distributions :: "'t set \<Rightarrow> ('t \<Rightarrow> 'b) measure" where
-"distributions T = (\<Pi>\<^sub>M t\<in>T. distr M M' (X t))"
-
-lemma prob_space_distributions: "prob_space (distributions J)"
-  by (simp add: distributions_def local.prod.prob_space prob_space_PiM)
-
-lemma sets_distributions: "sets (distributions J) = sets (PiM J (\<lambda>_. M'))"
-  unfolding distributions_def by (rule sets_PiM_cong; simp)
-
-lemma space_distributions: "space (distributions J) = (\<Pi>\<^sub>E i\<in>J. space M')"
-  unfolding distributions_def by (simp add: space_PiM)
-
-lemma emeasure_distributions:
-  assumes "finite J" "\<And>j. j\<in>J \<Longrightarrow> A j \<in> sets M'"
-  shows "emeasure (distributions J) (Pi\<^sub>E J A) = (\<Prod>j\<in>J. emeasure (distr M M' (X j)) (A j))"
-  by (simp add: distributions_def assms prod.emeasure_PiM)
-end
-
-sublocale stochastic_process \<subseteq> projective_family I distributions "(\<lambda>_. M')"
-proof (intro projective_family.intro)
-  fix J and H
-  assume *: "J \<subseteq> H" "finite H" "H \<subseteq> I"
-  then have "J \<subseteq> I"
-    by simp
-  show "distributions J = distr (distributions H) (Pi\<^sub>M J (\<lambda>_. M')) (\<lambda>f. restrict f J)"
-  proof (rule measure_eqI)
-    show "sets (distributions J) = sets (distr (distributions H) (Pi\<^sub>M J (\<lambda>_. M')) (\<lambda>f. restrict f J))"
-      by (simp add: sets_distributions)
-    fix S assume "S \<in> sets (distributions J)"
-    then have in_sets: "S \<in> sets (PiM J (\<lambda>_. M'))"
-      by (simp add: sets_distributions)
-    have prod_emb_distr: "(prod_emb H (\<lambda>_. M') J S) = (prod_emb H (\<lambda>t. distr M M' (X t)) J S)"
-      by (simp add: prod_emb_def)
-    have "emeasure (distr (distributions H) (Pi\<^sub>M J (\<lambda>_. M')) (\<lambda>f. restrict f J)) S =
-          emeasure (distributions H) (prod_emb H (\<lambda>_. M') J S)"
-        apply (rule emeasure_distr_restrict)
-      by (simp_all add: "*" sets_distributions in_sets)
-    also have "... = emeasure (distributions J) S"
-      unfolding distributions_def
-      apply (subst prod_emb_distr)
-      apply (subst prod.emeasure_prod_emb)
-      using distributions_def in_sets sets_distributions * by presburger+
-    finally show "emeasure (distributions J) S 
-                = emeasure (distr (distributions H) (Pi\<^sub>M J (\<lambda>_. M')) (\<lambda>f. restrict f J)) S"
-      by argo
-  qed
-qed (rule prob_space_distributions)
 
 typedef ('t, 'a, 'b) stochastic_process = "{(M :: 'a measure, M' :: 'b measure, I :: 't set, X :: 't \<Rightarrow> 'a \<Rightarrow> 'b).
    stochastic_process M M' X}"
@@ -96,14 +44,115 @@ definition process :: "('t,'a,'b) stochastic_process \<Rightarrow> 't \<Rightarr
 
 declare [[coercion process]]
 
-definition process_of :: "'a measure \<Rightarrow> 'b measure \<Rightarrow> 't set \<Rightarrow> ('t \<Rightarrow> 'a \<Rightarrow> 'b) \<Rightarrow> ('t,'a,'b) stochastic_process"
-  where "process_of M M' I X \<equiv> Abs_stochastic_process (M, M', I, X)"
+lemma stochastic_process_construct [simp]: "stochastic_process (proc_source X) (proc_target X) (process X)"
+  apply induction unfolding proc_source_def proc_target_def process_def by (auto simp: Abs_stochastic_process_inverse)
+
+interpretation stochastic_process "proc_source X" "proc_target X" "proc_index X" "process X"
+  by (fact stochastic_process_construct)
+
+lemma
+  assumes "stochastic_process M M' X"
+  shows Abs_process_source[simp]: "proc_source (Abs_stochastic_process (M, M', I, X)) = M" and
+        Abs_process_target[simp]: "proc_target (Abs_stochastic_process (M, M', I, X)) = M'" and
+        Abs_process_index[simp]: "proc_index (Abs_stochastic_process (M, M', I, X)) = I" and
+        Abs_process_process[simp]: "process (Abs_stochastic_process (M, M', I, X)) = X"
+  unfolding proc_source_def proc_target_def proc_index_def process_def
+  using assms by (simp_all add: Abs_stochastic_process_inverse)
+
+text \<open> Here we construct a process on a given index set. For this we need to produce measurable
+  functions for indices outside the index set; we use the constant function, but it needs to point at
+  an element of the target set to be measurable. \<close>
+definition process_of :: "'a measure \<Rightarrow> 'b measure \<Rightarrow> 't set \<Rightarrow> ('t \<Rightarrow> 'a \<Rightarrow> 'b) \<Rightarrow> 'b \<Rightarrow> ('t,'a,'b) stochastic_process"
+  where "process_of M M' I X \<omega> \<equiv> if (\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M') \<and> prob_space M \<and> \<omega> \<in> space M'
+  then Abs_stochastic_process (M, M', I, (\<lambda>t. if t \<in> I then X t else (\<lambda>_. \<omega>)))
+  else undefined"
+
+lemma process_of_stochastic:
+  assumes "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "prob_space M" "\<omega> \<in> space M'"
+  shows "stochastic_process M M' (\<lambda>t. if t \<in> I then X t else (\<lambda>_. \<omega>))"
+  apply (rule prob_space.stochastic_processI[OF assms(2)])
+  using assms(1,3) by (metis measurable_const)
+
+lemma process_of_eq_Abs:
+  assumes "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "prob_space M" "\<omega> \<in> space M'"
+  shows "process_of M M' I X \<omega> = Abs_stochastic_process (M, M', I, (\<lambda>t. if t \<in> I then X t else (\<lambda>_. \<omega>)))"
+  unfolding process_of_def using assms stochastic_process.axioms(1) by auto
+
+lemma
+  assumes "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "prob_space M" "\<omega> \<in> space M'"
+  shows
+    source_process_of[simp]: "proc_source (process_of M M' I X \<omega>) = M" and
+    target_process_of[simp]: "proc_target (process_of M M' I X \<omega>) = M'" and
+    index_process_of[simp]: "proc_index (process_of M M' I X \<omega>) = I" and
+    process_process_of[simp]: "process (process_of M M' I X \<omega>) = (\<lambda>t. if t \<in> I then X t else (\<lambda>_. \<omega>))"
+  using process_of_eq_Abs[OF assms] process_of_stochastic[OF assms] by simp_all
+
+lemma process_of_apply:
+  assumes "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "prob_space M" "\<omega> \<in> space M'" "t \<in> I"
+  shows "process (process_of M M' I X \<omega>) t = X t"
+  using assms by (meson process_process_of)
+
+text \<open> We define the finite-dimensional distributions of our process. \<close>
+
+definition distributions :: "('t, 'a, 'b) stochastic_process \<Rightarrow> 't set \<Rightarrow> ('t \<Rightarrow> 'b) measure" where
+"distributions X T = (\<Pi>\<^sub>M t\<in>T. distr (proc_source X) (proc_target X) (X t))"
+
+lemma prob_space_distributions: "prob_space (distributions X J)"
+  unfolding distributions_def
+  by (simp add: prob_space_PiM proc_source.prob_space_distr stochastic_process.random_X)
+
+lemma sets_distributions: "sets (distributions X J) = sets (PiM J (\<lambda>_. (proc_target X)))"
+  unfolding distributions_def by (rule sets_PiM_cong; simp)
+
+lemma space_distributions: "space (distributions X J) = (\<Pi>\<^sub>E i\<in>J. space (proc_target X))"
+  unfolding distributions_def by (simp add: space_PiM)
+
+lemma emeasure_distributions:
+  assumes "finite J" "\<And>j. j\<in>J \<Longrightarrow> A j \<in> sets (proc_target X)"
+  shows "emeasure (distributions X J) (Pi\<^sub>E J A) = (\<Prod>j\<in>J. emeasure (distr (proc_source X) (proc_target X) (X j)) (A j))"
+  by (simp add: distributions_def assms prod.emeasure_PiM)
+
+interpretation projective_family "(proc_index X)" "distributions X" "(\<lambda>_. proc_target X)"
+proof (intro projective_family.intro)
+  fix J and H
+  let ?I = "proc_index X"
+  and ?M = "proc_source X"
+  and ?M' = "proc_target X"
+  assume *: "J \<subseteq> H" "finite H" "H \<subseteq> ?I"
+  then have "J \<subseteq> ?I"
+    by simp
+  show "distributions X J = distr (distributions X H) (Pi\<^sub>M J (\<lambda>_. ?M')) (\<lambda>f. restrict f J)"
+  proof (rule measure_eqI)
+    show "sets (distributions X J) = sets (distr (distributions X H) (Pi\<^sub>M J (\<lambda>_. ?M')) (\<lambda>f. restrict f J))"
+      by (simp add: sets_distributions)
+    fix S assume "S \<in> sets (distributions X J)"
+    then have in_sets: "S \<in> sets (PiM J (\<lambda>_. ?M'))"
+      by (simp add: sets_distributions)
+    have prod_emb_distr: "(prod_emb H (\<lambda>_. ?M') J S) = (prod_emb H (\<lambda>t. distr ?M ?M' (X t)) J S)"
+      by (simp add: prod_emb_def)
+    have "emeasure (distr (distributions X H) (Pi\<^sub>M J (\<lambda>_. ?M')) (\<lambda>f. restrict f J)) S =
+          emeasure (distributions X H) (prod_emb H (\<lambda>_. ?M') J S)"
+        apply (rule emeasure_distr_restrict)
+      by (simp_all add: "*" sets_distributions in_sets)
+    also have "... = emeasure (distributions X J) S"
+      unfolding distributions_def
+      apply (subst prod_emb_distr)
+      apply (subst prod.emeasure_prod_emb)
+      using distributions_def in_sets sets_distributions * apply blast+
+       apply (metis \<open>S \<in> sets (distributions X J)\<close> distributions_def)
+      ..
+    finally show "emeasure (distributions X J) S 
+                = emeasure (distr (distributions X H) (Pi\<^sub>M J (\<lambda>_. ?M')) (\<lambda>f. restrict f J)) S"
+      by argo
+  qed
+qed (rule prob_space_distributions)
 
 locale polish_stochastic = stochastic_process M "borel :: 'b::polish_space measure" I X
   for M and I and X
 
+(*
 sublocale polish_stochastic \<subseteq> polish_projective I distributions
-  by (simp add: polish_projective.intro projective_family_axioms)
+  by (simp add: polish_projective.intro projective_family_axioms) *)
 
 lemma distributed_cong_random_variable:
   assumes "M = K" "N = L" "AE x in M. X x = Y x" "X \<in> M \<rightarrow>\<^sub>M N" "Y \<in> K \<rightarrow>\<^sub>M L" "f \<in> borel_measurable N"
@@ -284,6 +333,11 @@ lemma indistinguishable_eq_AE:
   using indistinguishableD(2)[OF assms]
   by (smt (verit, del_insts) mem_Collect_eq subset_eq)
 
+lemma indistinguishable_null_set_ex:
+  assumes "indistinguishable X Y"
+  shows "\<exists>N \<in> null_sets (proc_source X). {\<omega>. \<exists>t \<in> proc_index X. P t \<omega> \<noteq> Q t \<omega>} \<subseteq> N"
+  sorry
+
 lemma indistinguishable_refl [simp]: "indistinguishable X X"
   by (auto intro: indistinguishableI)
 
@@ -341,9 +395,9 @@ qed
 
 (* definition "right_continuous_on s f \<equiv> \<forall>x \<in> s. continuous (at x within {x<..} \<inter> s) f" *)
 
-text \<open> Klenke 21.5(ii), weakened to regular continuity \<close>
+text \<open> Klenke 21.5(ii). His statement is more general - we reduce right continuity to regular continuity \<close>
 
-lemma modification_right_continuous:
+lemma modification_continuous_indistinguishable:
   fixes X :: "(real, 'a, 'b :: metric_space) stochastic_process"
   assumes modification: "modification X Y"
     and interval: "\<exists>T > 0. proc_index X = {0..T}"
@@ -412,5 +466,37 @@ proof (rule indistinguishableI)
   finally show "\<exists>N\<in>null_sets (proc_source X). \<forall>t\<in>proc_index X. {x \<in> space (proc_source X). process X t x \<noteq> process Y t x} \<subseteq> N"
     by (smt (verit) null S SUP_le_iff order_trans)
 qed
+
+definition restrict_index :: "('t, 'a, 'b) stochastic_process \<Rightarrow> 't set \<Rightarrow> ('t, 'a, 'b) stochastic_process"
+  where "restrict_index X T \<equiv> Abs_stochastic_process ((proc_source X), (proc_target X), T, (process X))"
+
+lemma
+  shows
+  restrict_index_source[simp]: "proc_source (restrict_index X T) = proc_source X" and
+  restrict_index_target[simp]: "proc_target (restrict_index X T) = proc_target X" and
+  restrict_index_index[simp]:  "proc_index (restrict_index X T) = T" and
+  restrict_index_process[simp]: "process (restrict_index X T) = process X"
+  unfolding restrict_index_def by simp_all
+
+lemma restrict_index_override[simp]: "restrict_index (restrict_index X T) S = restrict_index X S"
+  unfolding restrict_index_def by simp
+
+lemma compatible_restrict_index:
+  assumes "compatible X Y"
+  shows "compatible (restrict_index X S) (restrict_index Y S)"
+  using assms unfolding compatible_def by auto
+
+lemma modification_restrict_index:
+  assumes "modification X Y" "S \<subseteq> proc_index X"
+  shows "modification (restrict_index X S) (restrict_index Y S)"
+  using assms unfolding modification_def
+    apply (auto simp: compatible_restrict_index)
+    apply (metis restrict_index_source subsetD)
+  done
+
+lemma indistinguishable_restrict_index:
+  assumes "indistinguishable X Y" "S \<subseteq> proc_index X"
+  shows "indistinguishable (restrict_index X S) (restrict_index Y S)"
+  using assms unfolding indistinguishable_def by (auto simp: compatible_restrict_index)
 
 end
