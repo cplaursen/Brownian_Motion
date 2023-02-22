@@ -1,10 +1,6 @@
 theory Holder_Continuous
-  imports "HOL-Analysis.Analysis" "Real_Power.RealPower" (* use if powr gives issues *)
+  imports "HOL-Analysis.Analysis"
 begin
-
-term lipschitz_on
-
-term local_lipschitz
 
 text \<open> H{\"o}lder continuity is a weaker version of Lipschitz continuity. \<close>
 
@@ -18,6 +14,9 @@ definition local_holder_on :: "real \<Rightarrow> 'a :: metric_space set \<Right
 
 definition holder_on :: "real \<Rightarrow> 'a :: metric_space set \<Rightarrow> ('a \<Rightarrow> 'b :: metric_space) \<Rightarrow> bool" ("_-holder'_on" 1000) where
 "\<gamma>-holder_on D \<phi> \<longleftrightarrow> \<gamma> > 0 \<and> \<gamma> \<le> 1 \<and> (\<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
+
+text \<open> We prove various equivalent formulations of local holder continuity, using open and closed
+  balls and inequalities. \<close>
 
 lemma local_holder_on_cball:
   "local_holder_on \<gamma> D \<phi> \<longleftrightarrow> \<gamma> > 0 \<and> \<gamma> \<le> 1 \<and>
@@ -69,6 +68,8 @@ lemma local_holder_on_altdef:
   assumes "D \<noteq> {}"
   shows "local_holder_on \<gamma> D \<phi> = (\<forall>t \<in> D. (\<exists>\<epsilon> > 0. (\<gamma>-holder_on ((cball t \<epsilon>) \<inter> D) \<phi>)))"
   unfolding local_holder_on_cball holder_on_def using assms by blast
+
+text \<open> Holder continuity matches up with the existing definitions in @{theory "HOL-Analysis.Lipschitz"}\<close>
 
 lemma holder_1_eq_lipschitz: "1-holder_on D \<phi> = (\<exists>C. lipschitz_on C D \<phi>)"
   unfolding holder_on_def lipschitz_on_def by (auto simp: fun_eq_iff dist_commute)
@@ -197,7 +198,7 @@ lemma holder_implies_local_holder: "\<gamma>-holder_on D \<phi> \<Longrightarrow
   apply (metis IntD1 inf.commute)
   done
 
-lemma local_holder_implies_continuous:
+lemma local_holder_continuous:
   assumes local_holder: "local_holder_on \<gamma> X \<phi>"
   shows "continuous_on X \<phi>"
   unfolding continuous_on_def
@@ -219,13 +220,6 @@ proof safe
   then show "(\<phi> \<longlongrightarrow> \<phi> x) (at x within X)"
     by fastforce
 qed
-
-thm compact_continuous_image
-
-thm compact_imp_bounded
-
-lemma "(x :: real) > y \<Longrightarrow> y > 0 \<Longrightarrow> x / y > 1"
-  by auto
 
 lemma local_holder_compact_imp_holder:
   fixes \<phi> :: "real \<Rightarrow> real"
@@ -249,7 +243,7 @@ proof -
   from D obtain \<rho> :: real where \<rho>: "\<forall>t \<in> I. \<exists>U \<in> D. ball t \<rho> \<subseteq> U" "\<rho> > 0"
     by (smt (verit, del_insts) Elementary_Metric_Spaces.open_ball Heine_Borel_lemma assms(1) imageE subset_image_iff)
   have "bounded (\<phi> ` I)"
-    by (metis compact_continuous_image compact_imp_bounded assms local_holder_implies_continuous)
+    by (metis compact_continuous_image compact_imp_bounded assms local_holder_continuous)
   then obtain l where l: "\<forall>x \<in> I. \<forall>y \<in> I. dist (\<phi> x) (\<phi> y) \<le> l"
     by (metis bounded_two_points image_eqI)
   text \<open> Simply need to construct C_bar such that it is greater than any of these \<close>
