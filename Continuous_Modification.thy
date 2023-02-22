@@ -2,9 +2,6 @@ theory Continuous_Modification
   imports Stochastic_Process Holder_Continuous
 begin
 
-definition restrict_index :: "('t, 'a, 'b) stochastic_process \<Rightarrow> 't set \<Rightarrow> ('t, 'a, 'b) stochastic_process"
-  where "restrict_index X T \<equiv> process_of (proc_source X) (proc_target X) T (process X)"
-
 text \<open> Klenke 21.6 - Kolmorogov-Chentsov\<close>
 
 theorem holder_continuous_modification:
@@ -30,9 +27,44 @@ proof -
     obtain P where P: "modification (restrict_index X {0..S}) P" "(\<forall>\<gamma>\<in>{0<..<(b / a)}.
                AE x in proc_source P. local_holder_on \<gamma> {0..S} (\<lambda>t. P t x))"
       using *[OF ST(1)] by blast
-    obtain Q where Q: "modification (restrict_index X {0..S}) Q" "(\<forall>\<gamma>\<in>{0<..<(b / a)}.
-               AE x in proc_source Q. local_holder_on \<gamma> {0..S} (\<lambda>t. Q t x))"
-      using *[OF ST(1)] by blast
-    oops
-    text \<open> WITHOUT LOSS OF GENERALITY T = 1. (What?)\<close>
+    obtain Q where Q: "modification (restrict_index X {0..T}) Q" "(\<forall>\<gamma>\<in>{0<..<(b / a)}.
+               AE x in proc_source Q. local_holder_on \<gamma> {0..T} (\<lambda>t. Q t x))"
+      using *[OF ST(2)] by blast
+    have mod_restrict: "modification (restrict_index P {0..min S T}) (restrict_index Q {0..min S T})"
+    proof -
+      have "modification (restrict_index X {0..min S T}) (restrict_index P {0..min S T})"
+        using P(1) restrict_index_override modification_restrict_index by fastforce
+      moreover have "modification (restrict_index X {0..min S T}) (restrict_index Q {0..min S T})"
+        using Q(1) restrict_index_override modification_restrict_index by fastforce
+      ultimately show ?thesis
+        using modification_sym modification_trans by blast
+    qed
+    then have "indistinguishable (restrict_index P {0..min S T}) (restrict_index Q {0..min S T})"
+    proof -
+      have "b / a > 0"
+        using gt_0 by auto
+      then obtain \<gamma> where \<gamma>: "\<gamma> \<in> {0<..<(b / a)}" "\<gamma> \<le> 1"
+        by (simp, meson field_lbound_gt_zero less_eq_real_def less_numeral_extra(1))
+      then have "AE x in proc_source P. continuous_on {0..S} (\<lambda>t. P t x)"
+        using P(2) local_holder_continuous by fast
+      then have 1: "AE x in proc_source (restrict_index P {0..min S T}). continuous_on {0..min S T} (\<lambda>t. P t x)"
+        apply (subst restrict_index_source)
+        using continuous_on_subset by fastforce
+      have "AE x in proc_source Q. continuous_on {0..T} (\<lambda>t. Q t x)"
+        using Q(2) \<gamma> local_holder_continuous by fast
+      then have 2: "AE x in proc_source (restrict_index Q {0..min S T}). continuous_on {0..min S T} (\<lambda>t. Q t x)"
+        apply (subst restrict_index_source)
+        using continuous_on_subset by fastforce
+      show ?thesis
+        apply (rule modification_continuous_indistinguishable)
+           apply (fact mod_restrict)
+        using ST(1) ST(2) apply force
+        using 1 apply fastforce
+        using 2 apply fastforce
+        done
+    qed
+    then obtain N where "{\<omega>. \<exists>t \<in> {0..min S T}. P t \<omega> \<noteq> Q t \<omega>} \<subseteq> N \<and> N \<in> null_sets (proc_source P)"
+      unfolding indistinguishable_def apply auto
+      sorry
+        text \<open> WITHOUT LOSS OF GENERALITY T = 1. (What?)\<close>
 end
