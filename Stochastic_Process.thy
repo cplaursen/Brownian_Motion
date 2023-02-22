@@ -333,10 +333,10 @@ lemma indistinguishable_eq_AE:
   using indistinguishableD(2)[OF assms]
   by (smt (verit, del_insts) mem_Collect_eq subset_eq)
 
-lemma indistinguishable_null_set_ex:
+lemma indistinguishable_null_ex:
   assumes "indistinguishable X Y"
-  shows "\<exists>N \<in> null_sets (proc_source X). {\<omega>. \<exists>t \<in> proc_index X. P t \<omega> \<noteq> Q t \<omega>} \<subseteq> N"
-  sorry
+  shows "\<exists>N \<in> null_sets (proc_source X). {x \<in> space (proc_source X).\<exists>t \<in> proc_index X. X t x \<noteq> Y t x} \<subseteq> N"
+  using indistinguishableD(2)[OF assms] by blast
 
 lemma indistinguishable_refl [simp]: "indistinguishable X X"
   by (auto intro: indistinguishableI)

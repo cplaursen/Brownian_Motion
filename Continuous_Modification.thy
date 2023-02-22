@@ -63,8 +63,15 @@ proof -
         using 2 apply fastforce
         done
     qed
-    then obtain N where "{\<omega>. \<exists>t \<in> {0..min S T}. P t \<omega> \<noteq> Q t \<omega>} \<subseteq> N \<and> N \<in> null_sets (proc_source P)"
-      unfolding indistinguishable_def apply auto
+    then have "\<exists>N \<in> null_sets (proc_source P).
+   {\<omega>. \<exists>t \<in> {0..min S T}.(restrict_index P {0..min S T}) t \<omega> \<noteq> (restrict_index P {0..min S T}) t \<omega>} \<subseteq> N"
+      using indistinguishable_null_ex by blast
+    text \<open> We've shown that for any S T > 0, we can produce processes X^T that are modifications restricted
+  to min S T. We can then define our final process pointwise as X t = X^T t for all \<omega> in \<Omega>_\<infinity> \<close>
+    then have ?thesis
       sorry
-        text \<open> WITHOUT LOSS OF GENERALITY T = 1. (What?)\<close>
+  }
+  text \<open> We now need to prove that for all T > 0 there is a continuous modification on {0..T}. Klenke
+  assumes WLOG that T = 1, not sure how to do that here. \<close>
+
 end
