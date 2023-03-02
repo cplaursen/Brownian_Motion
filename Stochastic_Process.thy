@@ -10,7 +10,7 @@ locale stochastic_process = prob_space +
     and I :: "'t set"
     and X :: "'t \<Rightarrow> 'a \<Rightarrow> 'b"
   assumes random_X: "\<And>i. random_variable M' (X i)"
-
+                                                  
 sublocale stochastic_process \<subseteq> prod: product_prob_space "(\<lambda>t. distr M M' (X t))"
   using prob_space_distr random_X by (blast intro: product_prob_spaceI)
 
@@ -27,20 +27,22 @@ proof
     by (simp add: prob_space_return prob_space.stochastic_processI)
 qed
 
-definition proc_source :: "('t,'a,'b) stochastic_process \<Rightarrow> 'a measure" where
-"proc_source X = fst (Rep_stochastic_process X)"
+setup_lifting type_definition_stochastic_process
+
+lift_definition proc_source :: "('t,'a,'b) stochastic_process \<Rightarrow> 'a measure"
+is "fst" .
 
 interpretation proc_source: prob_space "proc_source X"
   by (induction, simp add: proc_source_def Abs_stochastic_process_inverse case_prod_beta' stochastic_process_def)
 
-definition proc_target :: "('t,'a,'b) stochastic_process \<Rightarrow> 'b measure" where
-"proc_target X = fst (snd (Rep_stochastic_process X))"
+lift_definition proc_target :: "('t,'a,'b) stochastic_process \<Rightarrow> 'b measure"
+is "fst \<circ> snd" .
 
-definition proc_index :: "('t,'a,'b) stochastic_process \<Rightarrow> 't set" where
-"proc_index X = fst (snd (snd (Rep_stochastic_process X)))"
+lift_definition proc_index :: "('t,'a,'b) stochastic_process \<Rightarrow> 't set"
+is "fst \<circ> snd \<circ> snd" .
 
-definition process :: "('t,'a,'b) stochastic_process \<Rightarrow> 't \<Rightarrow> 'a \<Rightarrow> 'b" where
-"process X = snd (snd (snd (Rep_stochastic_process X)))"
+lift_definition process :: "('t,'a,'b) stochastic_process \<Rightarrow> 't \<Rightarrow> 'a \<Rightarrow> 'b"
+is "snd \<circ> snd \<circ> snd" .
 
 declare [[coercion process]]
 
@@ -268,6 +270,18 @@ lemma modificationD:
   shows "compatible X Y"
     and "\<And>t. t \<in> proc_index X \<Longrightarrow> AE x in proc_source X. X t x = Y t x"
   using assms unfolding modification_def by blast+
+
+lemma modification_null_set:
+  assumes "modification X Y" "t \<in> proc_index X"
+  obtains N where "{x \<in> space (proc_source X). X t x \<noteq> Y t x} \<subseteq> N \<and> N \<in> null_sets (proc_source X)"
+proof -
+  from assms have "AE x in proc_source X. X t x = Y t x"
+    by (simp add: modificationD(2))
+  then have "\<exists>N\<in>null_sets (proc_source X). {x \<in> space (proc_source X). X t x \<noteq> Y t x} \<subseteq> N"
+    by (subst eventually_ae_filter[symmetric])
+  then show ?thesis
+    using that by blast
+qed
 
 lemma modification_refl [simp]: "modification X X"
   by (simp add: modificationI)
@@ -498,5 +512,10 @@ lemma indistinguishable_restrict_index:
   assumes "indistinguishable X Y" "S \<subseteq> proc_index X"
   shows "indistinguishable (restrict_index X S) (restrict_index Y S)"
   using assms unfolding indistinguishable_def by (auto simp: compatible_restrict_index)
+
+lemma modification_imp_identical_distributions:
+  assumes "modification X Y" "T \<subseteq> proc_index X"
+  shows "distributions X T = distributions Y T"
+  oops
 
 end
