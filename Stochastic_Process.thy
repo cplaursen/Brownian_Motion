@@ -64,21 +64,12 @@ lemma
 text \<open> Here we construct a process on a given index set. For this we need to produce measurable
   functions for indices outside the index set; we use the constant function, but it needs to point at
   an element of the target set to be measurable. \<close>
-definition process_of :: "'a measure \<Rightarrow> 'b measure \<Rightarrow> 't set \<Rightarrow> ('t \<Rightarrow> 'a \<Rightarrow> 'b) \<Rightarrow> 'b \<Rightarrow> ('t,'a,'b) stochastic_process"
-  where "process_of M M' I X \<omega> \<equiv> if (\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M') \<and> prob_space M \<and> \<omega> \<in> space M'
-  then Abs_stochastic_process (M, M', I, (\<lambda>t. if t \<in> I then X t else (\<lambda>_. \<omega>)))
-  else undefined"
 
-lemma process_of_stochastic:
-  assumes "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "prob_space M" "\<omega> \<in> space M'"
-  shows "stochastic_process M M' (\<lambda>t. if t \<in> I then X t else (\<lambda>_. \<omega>))"
-  apply (rule prob_space.stochastic_processI[OF assms(2)])
-  using assms(1,3) by (metis measurable_const)
-
-lemma process_of_eq_Abs:
-  assumes "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "prob_space M" "\<omega> \<in> space M'"
-  shows "process_of M M' I X \<omega> = Abs_stochastic_process (M, M', I, (\<lambda>t. if t \<in> I then X t else (\<lambda>_. \<omega>)))"
-  unfolding process_of_def using assms stochastic_process.axioms(1) by auto
+lift_definition process_of :: "'a measure \<Rightarrow> 'b measure \<Rightarrow> 't set \<Rightarrow> ('t \<Rightarrow> 'a \<Rightarrow> 'b) \<Rightarrow> 'b \<Rightarrow> ('t,'a,'b) stochastic_process"
+  is "\<lambda> M M' I X \<omega>. if (\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M') \<and> prob_space M \<and> \<omega> \<in> space M'
+  then (M, M', I, (\<lambda>t. if t \<in> I then X t else (\<lambda>_. \<omega>)))
+  else (return (sigma UNIV {{}, UNIV}) (SOME x. True), sigma UNIV UNIV, UNIV, \<lambda>_ _. \<omega>)"
+  by (simp add: prob_space.stochastic_processI prob_space_return)
 
 lemma
   assumes "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "prob_space M" "\<omega> \<in> space M'"
@@ -87,7 +78,7 @@ lemma
     target_process_of[simp]: "proc_target (process_of M M' I X \<omega>) = M'" and
     index_process_of[simp]: "proc_index (process_of M M' I X \<omega>) = I" and
     process_process_of[simp]: "process (process_of M M' I X \<omega>) = (\<lambda>t. if t \<in> I then X t else (\<lambda>_. \<omega>))"
-  using process_of_eq_Abs[OF assms] process_of_stochastic[OF assms] by simp_all
+  using assms by (transfer, auto)+
 
 lemma process_of_apply:
   assumes "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "prob_space M" "\<omega> \<in> space M'" "t \<in> I"
@@ -134,15 +125,11 @@ proof (intro projective_family.intro)
       by (simp add: prod_emb_def)
     have "emeasure (distr (distributions X H) (Pi\<^sub>M J (\<lambda>_. ?M')) (\<lambda>f. restrict f J)) S =
           emeasure (distributions X H) (prod_emb H (\<lambda>_. ?M') J S)"
-        apply (rule emeasure_distr_restrict)
+      apply (rule emeasure_distr_restrict)
       by (simp_all add: "*" sets_distributions in_sets)
     also have "... = emeasure (distributions X J) S"
       unfolding distributions_def
-      apply (subst prod_emb_distr)
-      apply (subst prod.emeasure_prod_emb)
-      using distributions_def in_sets sets_distributions * apply blast+
-       apply (metis \<open>S \<in> sets (distributions X J)\<close> distributions_def)
-      ..
+        using *(1,2) in_sets prod_emb_distr by force
     finally show "emeasure (distributions X J) S 
                 = emeasure (distr (distributions X H) (Pi\<^sub>M J (\<lambda>_. ?M')) (\<lambda>f. restrict f J)) S"
       by argo
