@@ -2,11 +2,6 @@ theory Continuous_Modification
   imports Stochastic_Process Holder_Continuous
 begin
 
-text \<open> The \<alpha> in the following theorem can be interpreted as the fractional part of x \<close>
-lemma floor_remainder:
-  obtains \<alpha>::real where "\<alpha> \<ge> 0" "\<alpha> < 1" "\<lfloor>x\<rfloor> = x - \<alpha>"
-  by (smt (verit, del_insts) of_int_floor_le real_of_int_floor_gt_diff_one)
-
 lemma dyadic_interval_lim: "(\<lambda>n. \<lfloor>2^n * T\<rfloor> / 2 ^ n) \<longlonglongrightarrow> T"
 proof (intro LIMSEQ_I)
   fix r :: real assume "r > 0"
@@ -15,18 +10,17 @@ proof (intro LIMSEQ_I)
   then have "\<forall>n\<ge>k. norm (real_of_int \<lfloor>2 ^ n * T\<rfloor> / 2 ^ n - T) < r"
   proof clarsimp
     fix n assume "k \<le> n"
-    obtain \<alpha> where \<alpha>: "\<alpha> \<ge> 0" "\<alpha> < 1" "real_of_int \<lfloor>2 ^ n * T\<rfloor> = 2 ^ n * T - \<alpha>"
-      using floor_remainder by blast
-    then have "\<bar>real_of_int \<lfloor>2 ^ n * T\<rfloor> / 2 ^ n - T\<bar> = \<bar>(2 ^ n * T - \<alpha>) / 2 ^ n - T\<bar>"
-      by presburger
-    also have "... = \<bar>2 ^ n * T / 2 ^ n - \<alpha> / 2 ^ n - T\<bar>"
+    let ?f = "frac (2 ^ n * T)"
+    have "\<bar>real_of_int \<lfloor>2 ^ n * T\<rfloor> / 2 ^ n - T\<bar> = \<bar>(2 ^ n * T - ?f) / 2 ^ n - T\<bar>"
+      by (simp add: frac_def)
+    also have "... = \<bar>2 ^ n * T / 2 ^ n - ?f / 2 ^ n - T\<bar>"
       by (metis diff_divide_distrib)
-    also have "... = \<bar>- \<alpha> / 2 ^ n\<bar>"
+    also have "... = \<bar>- ?f / 2 ^ n\<bar>"
       by simp
-    also have "... = \<alpha> / 2 ^ n"
-      using \<alpha>(1) by auto
+    also have "... = ?f / 2 ^ n"
+      by (simp add: frac_def)
     also have "... < r"
-      by (smt (verit, ccfv_SIG) \<open>k \<le> n\<close> k \<alpha>(1,2) frac_less power_increasing zero_less_power)
+      by (smt (verit, ccfv_SIG) \<open>k \<le> n\<close> frac_def frac_less k of_int_floor_le power_increasing real_of_int_floor_gt_diff_one zero_less_power)
     finally show "\<bar>real_of_int \<lfloor>2 ^ n * T\<rfloor> / 2 ^ n - T\<bar> < r" .
   qed
   then show "\<exists>no. \<forall>n\<ge>no. norm (real_of_int \<lfloor>2 ^ n * T\<rfloor> / 2 ^ n - T) < r"
@@ -92,6 +86,57 @@ lemma dyadic_interval_finite[simp]: "finite (dyadic_interval n T)"
 
 lemma dyadic_interval_countable[simp]: "countable (\<Union>n. dyadic_interval n T)"
   by (simp add: dyadic_interval_def)
+
+
+
+lemma floor_pow_2_leq:
+  fixes T :: real
+  assumes "T > 0"
+  shows "\<lfloor>2^n * T\<rfloor> / 2 ^ n \<le> \<lfloor>2 ^ (n+k) * T\<rfloor> / 2 ^ (n+k)"
+proof (induction k)
+  case 0
+  then show ?case by simp
+next
+  case (Suc k)
+  let ?f = "frac (2 ^ (n + k) * T)"
+  and ?f' = "frac (2 ^ (n + (Suc k)) * T)"
+  show ?case
+  proof (cases "?f < 1/2")
+    case True
+    then have "?f * 2 < 1"
+      by auto
+    then have "?f' = ?f * 2"
+      apply (simp add: frac_unique_iff)
+      by (metis (no_types, opaque_lifting) Ints_mult frac_unique_iff mult.assoc mult.commute right_diff_distrib_numeral sin_times_pi_eq_0 sin_two_pi)
+    then have "\<lfloor>2 ^ (n + Suc k) * T\<rfloor> / 2 ^ (n + Suc k) = (2 * (2 ^ (n + k) * T - ?f)) / 2 ^ (n + Suc k)"
+      by (simp add: frac_def)
+    also have "... = (2 ^ (n + k) * T - ?f) / 2 ^ (n + k)"
+      by (simp add: field_simps)
+    also have "... = \<lfloor>2^(n + k) * T\<rfloor> / 2 ^ (n + k)"
+      by (simp add: frac_def)
+    finally show ?thesis
+      using Suc by presburger
+  next
+    case False
+    have "?f' = frac (2 ^ (n + k) * T + 2 ^ (n + k) * T)"
+      by (simp add: field_simps)
+    then have "?f' = 2 * ?f - 1"
+      by (smt (verit, del_insts) frac_add False field_sum_of_halves)
+    then have "?f' < ?f"
+      using frac_lt_1 by auto
+    then have "(2 ^ (n + k) * T - ?f) / 2 ^ (n + k) < (2 ^ (n + (Suc k)) * T - ?f') / 2 ^ (n + Suc k)"
+      apply (simp add: field_simps)
+      by (smt (verit, ccfv_threshold) frac_ge_0)
+    then show ?thesis
+      by (smt (verit, ccfv_SIG) Suc frac_def)
+  qed
+qed
+
+lemma dyadic_interval_subset: "n < m \<Longrightarrow> dyadic_interval n T \<subseteq> dyadic_interval m T"
+  apply (intro subsetI)
+  unfolding dyadic_interval_def using floor_pow_2_leq sorry 
+qed
+  
 
 text \<open> Klenke 5.11: Markov inequality. Compare with @{thm nn_integral_Markov_inequality} \<close>
 
