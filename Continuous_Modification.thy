@@ -2,142 +2,6 @@ theory Continuous_Modification
   imports Stochastic_Process Holder_Continuous
 begin
 
-lemma dyadic_interval_lim: "(\<lambda>n. \<lfloor>2^n * T\<rfloor> / 2 ^ n) \<longlonglongrightarrow> T"
-proof (intro LIMSEQ_I)
-  fix r :: real assume "r > 0"
-  obtain k where k: "1 / 2^k < r"
-    by (metis \<open>r > 0\<close> one_less_numeral_iff power_one_over reals_power_lt_ex semiring_norm(76))
-  then have "\<forall>n\<ge>k. norm (real_of_int \<lfloor>2 ^ n * T\<rfloor> / 2 ^ n - T) < r"
-  proof clarsimp
-    fix n assume "k \<le> n"
-    let ?f = "frac (2 ^ n * T)"
-    have "\<bar>real_of_int \<lfloor>2 ^ n * T\<rfloor> / 2 ^ n - T\<bar> = \<bar>(2 ^ n * T - ?f) / 2 ^ n - T\<bar>"
-      by (simp add: frac_def)
-    also have "... = \<bar>2 ^ n * T / 2 ^ n - ?f / 2 ^ n - T\<bar>"
-      by (metis diff_divide_distrib)
-    also have "... = \<bar>- ?f / 2 ^ n\<bar>"
-      by simp
-    also have "... = ?f / 2 ^ n"
-      by (simp add: frac_def)
-    also have "... < r"
-      by (smt (verit, ccfv_SIG) \<open>k \<le> n\<close> frac_def frac_less k of_int_floor_le power_increasing real_of_int_floor_gt_diff_one zero_less_power)
-    finally show "\<bar>real_of_int \<lfloor>2 ^ n * T\<rfloor> / 2 ^ n - T\<bar> < r" .
-  qed
-  then show "\<exists>no. \<forall>n\<ge>no. norm (real_of_int \<lfloor>2 ^ n * T\<rfloor> / 2 ^ n - T) < r"
-    by blast
-qed
-
-text \<open> dyadic_interval n T is the collection of dyadic numbers in {0..T} with denominator 2^n. As
- n -> \<infinity> this collection approximates {0..T}. \<close>
-
-definition dyadic_interval :: "nat \<Rightarrow> real \<Rightarrow> real set"
-  where "dyadic_interval n T \<equiv> (\<lambda>k. k / (2 ^ n)) ` {0..\<lfloor>2^n * T\<rfloor>}"
-
-lemma dyadic_interval_negative[simp]: "T < 0 \<Longrightarrow> dyadic_interval n T = {}"
-  unfolding dyadic_interval_def apply simp
-  by (smt (verit, best) mult_pos_neg zero_less_power)
-
-lemma dyadic_interval_0[simp]: "T = 0 \<Longrightarrow> dyadic_interval n T = {0}"
-  unfolding dyadic_interval_def by simp
-
-lemma dyadic_interval_mem: 
-  assumes"x \<ge> 0" "T \<ge> 0" "x \<le> T" 
-  shows "\<lfloor>2^n * x\<rfloor> / 2 ^ n \<in> dyadic_interval n T"
-  unfolding dyadic_interval_def
-  by (smt (verit) assms atLeastAtMost_iff image_iff le_floor_iff mult.commute mult_right_mono of_int_0 split_mult_pos_le zero_le_power)
-
-lemma dyadics_leq: "x \<in> dyadic_interval n T \<Longrightarrow> x \<le> T"
-  unfolding dyadic_interval_def apply clarsimp
-  by (smt (verit, ccfv_SIG) divide_strict_right_mono le_floor_iff nonzero_mult_div_cancel_left zero_less_power)
-
-lemma dyadics_geq: "x \<in> dyadic_interval n T \<Longrightarrow> x \<ge> 0"
-  unfolding dyadic_interval_def by auto
-
-lemma zero_in_dyadics: "T \<ge> 0 \<Longrightarrow> 0 \<in> dyadic_interval n T"
-  using dyadic_interval_def by force
-
-lemma dyadic_interval_dense: "closure (\<Union>n. dyadic_interval n T) = {0..T}"
-proof (rule subset_antisym)
-  have "(\<Union>n. dyadic_interval n T) \<subseteq> {0..T}"
-    using dyadics_leq dyadics_geq by force
-  then show "closure (\<Union>n. dyadic_interval n T) \<subseteq> {0..T}"
-    by (auto simp: closure_minimal)
-  have "{0..T} \<subseteq> closure (\<Union>n. dyadic_interval n T)" if "T \<ge> 0"
-    unfolding closure_def
-  proof (clarsimp)
-    fix x assume x: "0 \<le> x" "x \<le> T" "\<forall>n. x \<notin> dyadic_interval n T"
-    then have "x > 0"
-      using zero_in_dyadics[OF that] order_le_less by blast
-    show "x islimpt (\<Union>n. dyadic_interval n T)"
-      apply (simp add: islimpt_sequential)
-      apply (rule exI [where x="\<lambda>n. \<lfloor>2^n * x\<rfloor> / 2^n"])
-      apply safe
-        using that dyadic_interval_mem x(1,2) apply blast
-        apply (smt (verit) dyadic_interval_mem x)
-        apply (fact dyadic_interval_lim)
-      done
-  qed
-  then show "{0..T} \<subseteq> closure (\<Union>n. dyadic_interval n T)"
-    by (cases "T \<ge> 0"; simp)
-qed
-
-lemma dyadic_interval_finite[simp]: "finite (dyadic_interval n T)"
-  unfolding dyadic_interval_def by simp
-
-lemma dyadic_interval_countable[simp]: "countable (\<Union>n. dyadic_interval n T)"
-  by (simp add: dyadic_interval_def)
-
-
-
-lemma floor_pow_2_leq:
-  fixes T :: real
-  assumes "T > 0"
-  shows "\<lfloor>2^n * T\<rfloor> / 2 ^ n \<le> \<lfloor>2 ^ (n+k) * T\<rfloor> / 2 ^ (n+k)"
-proof (induction k)
-  case 0
-  then show ?case by simp
-next
-  case (Suc k)
-  let ?f = "frac (2 ^ (n + k) * T)"
-  and ?f' = "frac (2 ^ (n + (Suc k)) * T)"
-  show ?case
-  proof (cases "?f < 1/2")
-    case True
-    then have "?f * 2 < 1"
-      by auto
-    then have "?f' = ?f * 2"
-      apply (simp add: frac_unique_iff)
-      by (metis (no_types, opaque_lifting) Ints_mult frac_unique_iff mult.assoc mult.commute right_diff_distrib_numeral sin_times_pi_eq_0 sin_two_pi)
-    then have "\<lfloor>2 ^ (n + Suc k) * T\<rfloor> / 2 ^ (n + Suc k) = (2 * (2 ^ (n + k) * T - ?f)) / 2 ^ (n + Suc k)"
-      by (simp add: frac_def)
-    also have "... = (2 ^ (n + k) * T - ?f) / 2 ^ (n + k)"
-      by (simp add: field_simps)
-    also have "... = \<lfloor>2^(n + k) * T\<rfloor> / 2 ^ (n + k)"
-      by (simp add: frac_def)
-    finally show ?thesis
-      using Suc by presburger
-  next
-    case False
-    have "?f' = frac (2 ^ (n + k) * T + 2 ^ (n + k) * T)"
-      by (simp add: field_simps)
-    then have "?f' = 2 * ?f - 1"
-      by (smt (verit, del_insts) frac_add False field_sum_of_halves)
-    then have "?f' < ?f"
-      using frac_lt_1 by auto
-    then have "(2 ^ (n + k) * T - ?f) / 2 ^ (n + k) < (2 ^ (n + (Suc k)) * T - ?f') / 2 ^ (n + Suc k)"
-      apply (simp add: field_simps)
-      by (smt (verit, ccfv_threshold) frac_ge_0)
-    then show ?thesis
-      by (smt (verit, ccfv_SIG) Suc frac_def)
-  qed
-qed
-
-lemma dyadic_interval_subset: "n < m \<Longrightarrow> dyadic_interval n T \<subseteq> dyadic_interval m T"
-  apply (intro subsetI)
-  unfolding dyadic_interval_def using floor_pow_2_leq sorry 
-qed
-  
-
 text \<open> Klenke 5.11: Markov inequality. Compare with @{thm nn_integral_Markov_inequality} \<close>
 
 lemma nn_integral_Markov_inequality':
@@ -186,6 +50,28 @@ proof -
   qed
 qed
 
+lemma suminf_shift:
+  assumes "summable (f :: nat \<Rightarrow> 'a :: {t2_space, topological_group_add, comm_monoid_add})"
+  shows "(\<Sum>n. f n) = f 0 + (\<Sum>n. f (Suc n))"
+proof -
+  obtain s where s: "s = suminf f"
+    using assms summable_def by blast
+  then have "(\<lambda>n. \<Sum>i\<le>n. f i) \<longlonglongrightarrow> s"
+    using summable_LIMSEQ'[OF assms] by argo
+  then have "(\<lambda>n. f 0 + (\<Sum>i<n. f (Suc i))) \<longlonglongrightarrow> s"
+    by (simp add: sum.atMost_shift)
+  then have "(\<lambda>n. f 0 +  (\<Sum>i<n. f (Suc i)) - f 0) \<longlonglongrightarrow> (s - f 0)"
+    using tendsto_diff by blast
+  moreover have "(\<lambda>n. f 0 +  (\<Sum>i<n. f (Suc i)) - f 0) = (\<lambda>n. (\<Sum>i<n. f (Suc i)))"
+    by (metis add.commute add_diff_cancel)
+  ultimately have "(\<lambda>n. \<Sum>i<n. f (Suc i)) \<longlonglongrightarrow> (s - f 0)"
+    by argo
+  then have *: "(\<Sum>n. f (Suc n)) = (s - f 0)"
+    using sums_def sums_iff by blast
+  then show ?thesis
+    by (metis s add.commute diff_add_cancel)
+qed
+
 lemma Max_finite_image_ex:
   assumes "finite S" "S \<noteq> {}" "P (MAX k\<in>S. f k)" 
   shows "\<exists>k \<in> S. P (f k)"
@@ -204,22 +90,20 @@ theorem holder_continuous_modification:
     shows "\<exists>Y. modification X Y \<and> (\<forall>\<gamma>\<in>{0<..<(b / a)}. AE x in proc_source Y. local_holder_on \<gamma> {0..} (\<lambda>t. Y t x))"
 proof -
   let ?M = "proc_source X"
-  interpret p: prob_space "?M"
-    by (simp add: proc_source.prob_space_axioms)
   { fix s t \<epsilon> :: real assume *: "s \<ge> 0" "t \<ge> 0" "\<epsilon> > 0"
     let ?inc = "\<lambda>x. \<bar>X t x - X s x\<bar> powr a"
-    have "emeasure (proc_source X) {x \<in> space (proc_source X). \<epsilon> \<le> \<bar>X t x - X s x\<bar>}
-     \<le> integral\<^sup>N (proc_source X) ?inc / \<epsilon> powr a"
+    have "emeasure ?M {x \<in> space ?M. \<epsilon> \<le> \<bar>X t x - X s x\<bar>}
+     \<le> integral\<^sup>N ?M ?inc / \<epsilon> powr a"
       apply (rule nn_integral_Markov_inequality')
       using *(1,2) borel_measurable_diff integrable_X apply blast
       using gt_0(1) *(3) powr_mono2 by (auto intro: mono_onI)
     also have "... \<le> (C * dist t s powr (1 + b)) / ennreal (\<epsilon> powr a)"
       apply (rule divide_right_mono_ennreal)
       using expectation[OF *(1,2)] ennreal_leI by presburger
-    finally have "emeasure (proc_source X) {x \<in> space (proc_source X). \<epsilon> \<le> \<bar>process X t x - process X s x\<bar>}
+    finally have "emeasure ?M {x \<in> space ?M. \<epsilon> \<le> \<bar>process X t x - process X s x\<bar>}
        \<le> (C * dist t s powr (1 + b)) / \<epsilon> powr a"
       using *(3) divide_ennreal gt_0(3) by simp
-    then have "\<P>(x in proc_source X. \<epsilon> \<le> \<bar>process X t x - process X s x\<bar>) \<le> (C * dist t s powr (1 + b)) / \<epsilon> powr a"
+    then have "\<P>(x in ?M. \<epsilon> \<le> \<bar>process X t x - process X s x\<bar>) \<le> (C * dist t s powr (1 + b)) / \<epsilon> powr a"
       by (smt (verit, del_insts) divide_nonneg_nonneg ennreal_le_iff gt_0(3) mult_nonneg_nonneg powr_ge_pzero proc_source.emeasure_eq_measure)
     (* FROM THIS X s \<rightarrow> X t as s \<rightarrow> t in probability *)
   } note markov = this
@@ -228,9 +112,9 @@ proof -
     assume gamma: "\<gamma> > 0"
        and k: "k \<ge> 1"
        and n: "n \<ge> 0"
-    have "\<P>(x in proc_source X. 2 powr (- \<gamma> * n) \<le> \<bar>X ((k - 1) * 2 powr - n) x - X (k * 2 powr - n) x\<bar>) \<le> C * 2 powr (-n * (1+b-a*\<gamma>))"
+    have "\<P>(x in ?M. 2 powr (- \<gamma> * n) \<le> \<bar>X ((k - 1) * 2 powr - n) x - X (k * 2 powr - n) x\<bar>) \<le> C * 2 powr (-n * (1+b-a*\<gamma>))"
     proof -
-      have "\<P>(x in proc_source X. 2 powr (- \<gamma> * n) \<le> \<bar>X ((k - 1) * 2 powr - n) x - X (k * 2 powr - n) x\<bar>)
+      have "\<P>(x in ?M. 2 powr (- \<gamma> * n) \<le> \<bar>X ((k - 1) * 2 powr - n) x - X (k * 2 powr - n) x\<bar>)
            \<le> C * dist ((k - 1) * 2 powr - n) (k * 2 powr - n) powr (1 + b) / (2 powr (- \<gamma> * n)) powr a"
         apply (rule markov)
         using k by auto
@@ -252,9 +136,12 @@ proof -
   {
     fix T :: real assume "T > 0"
     fix \<gamma> :: real assume "\<gamma> > 0"
-    let ?A = "\<lambda>n. {x \<in> space (proc_source X). Max {\<bar>X (real_of_int (k - 1) * 2 powr - real n) x - X (real_of_int k * 2 powr - real n) x\<bar> | k. k \<in> {1..\<lfloor>2^n * T\<rfloor>}} \<ge> 2 powr (-\<gamma> * real n)}"
-    let ?B = "\<lambda>n. (\<Union>m\<in>{n..}. ?A m)"
+    define A where "A \<equiv> \<lambda>n. {x \<in> space ?M. Max {\<bar>X (real_of_int (k - 1) * 2 powr - real n) x - X (real_of_int k * 2 powr - real n) x\<bar> | k. k \<in> {1..\<lfloor>2^n * T\<rfloor>}} \<ge> 2 powr (-\<gamma> * real n)}"
+    let ?B = "\<lambda>n. (\<Union>m\<in>{n..}. A m)"
     let ?N = "\<Inter>n \<in> {1..}. ?B n"
+    have A_measurable[measurable]: "A n \<in> sets ?M" for n
+      unfolding A_def apply measurable
+      by (metis random_X real_valued)+
     {
       fix n assume "2^n * T \<ge> 1"
       then have nonempty: "{1..\<lfloor>2^n * T\<rfloor>} \<noteq> {}"
@@ -262,15 +149,15 @@ proof -
     
       have finite: "finite {1..\<lfloor>2^n * T\<rfloor>}"
         by simp
-      have "emeasure (proc_source X) (?A n) \<le> emeasure (proc_source X) (\<Union>k \<in> {1..\<lfloor>2^n * T\<rfloor>}.
-      {x\<in>space (proc_source X). \<bar>X (real_of_int (k - 1) * 2 powr - real n) x - X (real_of_int k * 2 powr - real n) x\<bar> \<ge> 2 powr (- \<gamma> * real n)})"
-      (is "emeasure ?X (?A n) \<le> emeasure ?X ?R")
+      have "emeasure ?M (A n) \<le> emeasure ?M (\<Union>k \<in> {1..\<lfloor>2^n * T\<rfloor>}.
+      {x\<in>space ?M. \<bar>X (real_of_int (k - 1) * 2 powr - real n) x - X (real_of_int k * 2 powr - real n) x\<bar> \<ge> 2 powr (- \<gamma> * real n)})"
+      (is "emeasure ?M (A n) \<le> emeasure ?M ?R")
       proof (rule emeasure_mono, intro subsetI)
-        fix x assume *: "x \<in> ?A n"
-        from * have in_space: "x \<in> space ?X"
-          by fast
+        fix x assume *: "x \<in> A n"
+        from * have in_space: "x \<in> space ?M"
+          unfolding A_def by fast
         from * have "2 powr (- \<gamma> * real n) \<le> Max {\<bar>X (real_of_int (k - 1) * 2 powr - real n) x - X (real_of_int k * 2 powr - real n) x\<bar> |k. k \<in> {1..\<lfloor>2 ^ n * T\<rfloor>}}"
-          by blast
+          unfolding A_def by blast
         then have "\<exists>k \<in> {1..\<lfloor>2 ^ n * T\<rfloor>}. 2 powr (- \<gamma> * real n) \<le> \<bar>X (real_of_int (k - 1) * 2 powr - real n) x - X (real_of_int k * 2 powr - real n) x\<bar>"
           apply (simp only: setcompr_eq_image)
           apply (rule Max_finite_image_ex[where P="\<lambda>x. 2 powr (- \<gamma> * real n) \<le> x", OF finite nonempty])
@@ -279,12 +166,12 @@ proof -
         then show "x \<in> ?R"
           using in_space by simp
       next
-        show "?R \<in> sets (proc_source X)"
+        show "?R \<in> sets ?M"
           apply measurable
           by (smt (verit) real_valued random_X)+
       qed
-      also have "... \<le> (\<Sum>k\<in>{1..\<lfloor>2^n * T\<rfloor>}. emeasure (proc_source X) 
-    {x\<in>space (proc_source X). \<bar>X (real_of_int (k - 1) * 2 powr - real n) x - X (real_of_int k * 2 powr - real n) x\<bar> \<ge> 2 powr (- \<gamma> * real n)})"
+      also have "... \<le> (\<Sum>k\<in>{1..\<lfloor>2^n * T\<rfloor>}. emeasure ?M 
+    {x\<in>space ?M. \<bar>X (real_of_int (k - 1) * 2 powr - real n) x - X (real_of_int k * 2 powr - real n) x\<bar> \<ge> 2 powr (- \<gamma> * real n)})"
         apply (rule emeasure_subadditive_finite)
          apply blast
         apply (subst image_subset_iff)
@@ -298,16 +185,50 @@ proof -
           fix k assume "k \<in> {1..\<lfloor>2 ^ n * T\<rfloor>}"
           then have "real_of_int k \<ge> 1"
             by presburger
-          have "measure (proc_source X) {x \<in> space (proc_source X). 2 powr (- \<gamma> * real n) \<le> \<bar>X (real_of_int (k - 1) * 2 powr - real n) x - X (real_of_int k * 2 powr - real n) x\<bar>} \<le> C * 2 powr (-(real n) * (1+b-a*\<gamma>))"
+          have "measure ?M {x \<in> space ?M. 2 powr (- \<gamma> * real n) \<le> \<bar>X (real_of_int (k - 1) * 2 powr - real n) x - X (real_of_int k * 2 powr - real n) x\<bar>} \<le> C * 2 powr (-(real n) * (1+b-a*\<gamma>))"
             using incr[OF \<open>\<gamma> > 0\<close> \<open>real_of_int k \<ge> 1\<close>] by simp
-        }
+        } note X = this
+        then have "sum (\<lambda>k. measure ?M {x \<in> space ?M. 2 powr (- \<gamma> * real n) \<le> \<bar>X (real_of_int (k - 1) * 2 powr - real n) x - X (real_of_int k * 2 powr - real n) x\<bar>}) {1..\<lfloor>2 ^ n * T\<rfloor>} \<le> of_nat (card {1..\<lfloor>2 ^ n * T\<rfloor>}) * (C * 2 powr (-(real n) * (1+b-a*\<gamma>)))"
+          by (rule sum_bounded_above)
         then show ?thesis
-          using sum_bounded_above sorry
-      qed
+          apply (subst proc_source.emeasure_eq_measure)
+          apply (subst sum_ennreal)
+          apply auto
+          apply (rule ennreal_leI)
+          apply argo
+          done
+        qed
       also have "... = C * 2 powr (- n * (1 + b - a * \<gamma>)) * \<lfloor>2 ^ n * T\<rfloor>"
         using \<open>0 < T\<close> by force
-      finally have "emeasure (proc_source X) (?A n) \<le> C * 2 powr (- n * (1 + b - a * \<gamma>)) * \<lfloor>2 ^ n * T\<rfloor>".
-    }
+      finally have "emeasure ?M (A n) \<le> C * 2 powr (- n * (1 + b - a * \<gamma>)) * \<lfloor>2 ^ n * T\<rfloor>".
+    } note A = this
+    thm suminf_def
+    have "emeasure ?M (?B n) \<le> (\<Sum>m. emeasure ?M (A (m + n)))" for n
+    proof (induct n)
+      case 0
+      show ?case
+        apply simp
+        apply (rule emeasure_subadditive_countably)
+      apply (intro subsetI)
+      using A_measurable by auto
+    next
+      case (Suc n)
+      have "(\<Sum>m. measure ?M (A (m + n))) = measure ?M (A n) + (\<Sum>m. measure ?M (A (m + (Suc n))))"
+        apply (subst suminf_shift)
+         apply auto
+        sorry
+      have "{n..} = insert n {Suc n ..}"
+        by (simp add: atLeast_Suc insert_absorb)
+      then have "\<Union> (A ` {n..}) = A n \<union> (\<Union> (A ` {Suc n..}))"
+        apply (subst Union_image_insert[symmetric])
+        by presburger
+      then have "emeasure ?M (\<Union> (A ` {n..})) \<le> emeasure ?M (A n) + emeasure ?M (\<Union> (A ` {Suc n..}))"
+        apply simp
+        by (meson A_measurable emeasure_subadditive image_subset_iff sets.countable_UN)
+      also have "... \<le> undefined"
+        sorry
+      then show ?case sorry
+    qed
   }
   then show "\<exists>Y. modification X Y \<and> (\<forall>\<gamma>\<in>{0<..<(b / a)}. AE x in proc_source Y. local_holder_on \<gamma> {0..} (\<lambda>t. Y t x))"
     sorry
