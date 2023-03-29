@@ -1,5 +1,5 @@
 theory Dyadic_Interval
-  imports "HOL-Analysis.Analysis"
+  imports "HOL-Analysis.Analysis" "HOL-Library.Stream"
 begin
 
 text \<open> In this file we describe intervals of dyadic numbers {S..T} for reals S T. We use the floor
@@ -45,6 +45,8 @@ lemma ceil_pow2_geq: "\<lceil>2^n * T\<rceil> / 2 ^ n \<ge> T"
 
 text \<open> dyadic_interval n T is the collection of dyadic numbers in {S..T} with denominator 2^n. As
  n -> \<infinity> this collection approximates {S..T}. \<close>
+
+thm dyadics_def
 
 definition dyadic_interval :: "nat \<Rightarrow> real \<Rightarrow> real \<Rightarrow> real set"
   where "dyadic_interval n S T \<equiv> (\<lambda>k. k / (2 ^ n)) ` {\<lceil>2^n * S\<rceil>..\<lfloor>2^n * T\<rfloor>}" 
@@ -145,16 +147,16 @@ next
   qed
 qed
 
-corollary mono_floor_pow2: "mono (\<lambda>n. \<lfloor>2^n * (T :: real)\<rfloor> / 2 ^ n)"
+corollary floor_pow2_mono: "mono (\<lambda>n. \<lfloor>2^n * (T :: real)\<rfloor> / 2 ^ n)"
   apply (intro monoI)
   subgoal for x y
     using floor_pow2_add_leq[of x T "y - x"] by force
   done
 
 lemma dyadic_interval_Max: "T \<ge> 0 \<Longrightarrow> Max (dyadic_interval n 0 T) = \<lfloor>2^n * T\<rfloor> / 2^n"
-  unfolding dyadic_interval_def
-  apply simp
-  using mono_Max_commute mono_floor_pow2 sorry
+  apply (simp add: dyadic_interval_def)
+  apply (subst mono_Max_commute[of "\<lambda>x. real_of_int x / 2^n", symmetric])
+  by (auto simp: mono_def field_simps Max_eq_iff)
 
 lemma dyadic_interval_subset: "n \<le> m \<Longrightarrow> dyadic_interval n 0 T \<subseteq> dyadic_interval m 0 T"
 proof (rule subsetI)
@@ -164,7 +166,7 @@ proof (rule subsetI)
   then have "k * 2 ^ (m - n) \<in> {0 .. \<lfloor>2^m * T\<rfloor>}"
   proof -
     have "k / 2 ^ n \<le> \<lfloor>2^m * T\<rfloor> / 2 ^ m"
-      by (smt mono_floor_pow2[THEN monoD, OF \<open>n \<le> m\<close>] k(2) divide_right_mono of_int_le_iff zero_le_power)
+      by (smt floor_pow2_mono[THEN monoD, OF \<open>n \<le> m\<close>] k(2) divide_right_mono of_int_le_iff zero_le_power)
     then have "k / 2 ^ n * 2 ^ m \<le> \<lfloor>2^m * T\<rfloor>"
       by (simp add: field_simps)
     moreover have "k / 2 ^ n * 2 ^ m = k * 2 ^ (m - n)"
@@ -184,18 +186,60 @@ proof (rule subsetI)
     done
 qed
 
+fun dyadic_expansion :: "real \<Rightarrow> nat stream" where
+ "dyadic_expansion k =
+  (let k' = k * 2 in if k' \<ge> 1 then 1 ## dyadic_expansion (k' - 1) else 0 ## dyadic_expansion k')"
+
+lemma dyadic_expansion_div_2: "k < 1 \<Longrightarrow> dyadic_expansion (Suc n) (k / 2) = 0 # dyadic_expansion n k"
+  oops
+
+lemma dyadic_expansion_interval:
+  assumes "x \<in> dyadic_interval n 0 T"
+  shows "of_int \<lfloor>x\<rfloor> + (\<Sum>i\<in>{0..<n}. of_nat (dyadic_expansion n x ! i) / 2 ^ Suc i) = x"
+  using assms
+proof (induction n)
+  case 0
+  then show ?case
+    unfolding dyadic_interval_def
+    by auto
+next
+  case (Suc n)
+  then obtain k where k: "k \<in> {0..\<lfloor>2^Suc n * T\<rfloor>}" "x = k / (2 ^ Suc n)"
+    unfolding dyadic_interval_def by force
+  consider "even k" | "odd k"
+    by auto
+  then show ?case
+  proof cases
+    case 1
+    then have "x = k div 2 / 2 ^ n"
+      by (simp add: real_of_int_div k(2))
+    moreover have "k div 2 \<in> {0..\<lfloor>2^n * T\<rfloor>}"
+      using k(1) by (auto simp add: le_floor_iff)
+    ultimately have "x \<in> dyadic_interval n 0 T"
+      unfolding dyadic_interval_def by force
+    then have "real_of_int \<lfloor>x\<rfloor> + (\<Sum>i = 0..<n. real (dyadic_expansion n x ! i) / 2 ^ Suc i) = x"
+      using Suc by blast
+    moreover have "dyadic_expansion (Suc n) x ! n = 0"
+      sorry
+    then show ?thesis sorry
+  next
+    case 2
+    then show ?thesis sorry
+  qed
+qed
+
+
+
 lemma dyadic_expansion:
   assumes "x \<in> dyadic_interval n 0 T" 
-  shows "\<exists>b k. b \<in> {0..n} \<rightarrow>\<^sub>E {0,1} \<and> k \<in> {0..\<lfloor>T\<rfloor>} \<and> x = k + (\<Sum>m\<in>{1..n}. b m / 2 ^ m)"
+  shows "\<exists>b k. b \<in> {1..n} \<rightarrow>\<^sub>E {0,1} \<and> k \<in> {0..\<lfloor>T\<rfloor>} \<and> x = k + (\<Sum>m\<in>{1..n}. b m / 2 ^ m)"
   using assms
 proof (induction n arbitrary: x)
   case 0
   then have "x \<in> {0..\<lfloor>T\<rfloor>}"
     unfolding dyadic_interval_def by auto
   then show ?case
-    using 0 dyadic_interval_iff apply simp
-    apply (intro exI[where x = "\<lambda>x\<in>{0}. 0"])
-    by simp
+    using 0 dyadic_interval_iff by simp
 next
   case (Suc n)
   then obtain k where k: "k \<in> {0..\<lfloor>2 ^ (Suc n) * T\<rfloor>}" "x = k / 2 ^ (Suc n)"
@@ -210,14 +254,14 @@ next
       by (simp add: k(2) real_of_int_div)
     then have "x \<in> dyadic_interval n 0 T"
       using dyadic_interval_def div2 by force
-    then obtain k' b where kb: "b \<in> {0..n} \<rightarrow>\<^sub>E {0, 1}" "k' \<in> {0..\<lfloor>T\<rfloor>}" "x = real_of_int k' + (\<Sum>m\<in>{1..n}. b m / 2 ^ m)"
+    then obtain k' b where kb: "b \<in> {1..n} \<rightarrow>\<^sub>E {0, 1}" "k' \<in> {0..\<lfloor>T\<rfloor>}" "x = real_of_int k' + (\<Sum>m\<in>{1..n}. b m / 2 ^ m)"
       using Suc(1) by blast
     show ?thesis
       apply (rule exI[where x="b(Suc n := 0)"])
       apply (rule exI[where x="k'"])
       apply safe
       using kb(1) apply fastforce
-      apply (metis kb(1) atLeast0_lessThan_Suc PiE_iff atLeastLessThanSuc_atLeastAtMost extensional_arb fun_upd_other insertI1 insertI2)
+      apply (metis PiE_arb atLeast0_atMost_Suc atLeast0_atMost_Suc_eq_insert_0 atLeastAtMost_iff atMost_atLeast0 fun_upd_other image_Suc_atMost insert_iff kb(1) nat.simps(3))
       using kb(2) apply fastforce
       apply (simp add: kb(3))
       done
@@ -229,7 +273,7 @@ next
       by (simp add: k(2) field_simps)
     then have "x - 1 / 2 ^ (Suc n) \<in> dyadic_interval n 0 T"
       using div2 by (simp add: dyadic_interval_def)
-    then obtain k' b where kb: "b \<in> {0..n} \<rightarrow>\<^sub>E {0, 1}" "k' \<in> {0..\<lfloor>T\<rfloor>}" "x - 1/2^Suc n = real_of_int k' + (\<Sum>m\<in>{1..n}. b m / 2 ^ m)"
+    then obtain k' b where kb: "b \<in> {1..n} \<rightarrow>\<^sub>E {0, 1}" "k' \<in> {0..\<lfloor>T\<rfloor>}" "x - 1/2^Suc n = real_of_int k' + (\<Sum>m\<in>{1..n}. b m / 2 ^ m)"
       using Suc(1)[of "x - 1 / 2 ^ (Suc n)"] by blast
     have x: "x = real_of_int k' + (\<Sum>m\<in>{1..n}. b m / 2 ^ m) + 1/2^Suc n"
       using kb(3) by (simp add: field_simps)
@@ -238,8 +282,8 @@ next
       apply (rule exI[where x="k'"])
       apply safe
       using kb(1) apply fastforce
-      apply (metis kb(1) atLeast0_lessThan_Suc PiE_iff atLeastLessThanSuc_atLeastAtMost extensional_arb fun_upd_other insertI1 insertI2)
-      using kb(2) apply blast
+      apply (metis PiE_arb atLeast0_atMost_Suc atLeast0_atMost_Suc_eq_insert_0 atLeastAtMost_iff atMost_atLeast0 fun_upd_other image_Suc_atMost insert_iff kb(1) nat.simps(3))
+     using kb(2) apply blast
       using x by simp
   qed
 qed

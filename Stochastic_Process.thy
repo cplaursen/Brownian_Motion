@@ -9,7 +9,7 @@ locale stochastic_process = prob_space +
   fixes M' :: "'b measure"
     and I :: "'t set"
     and X :: "'t \<Rightarrow> 'a \<Rightarrow> 'b"
-  assumes random_X: "\<And>i. random_variable M' (X i)"
+  assumes random_X[measurable]: "\<And>i. random_variable M' (X i)"
                                                   
 sublocale stochastic_process \<subseteq> prod: product_prob_space "(\<lambda>t. distr M M' (X t))"
   using prob_space_distr random_X by (blast intro: product_prob_spaceI)
@@ -68,15 +68,17 @@ text \<open> Here we construct a process on a given index set. For this we need 
 lift_definition process_of :: "'a measure \<Rightarrow> 'b measure \<Rightarrow> 't set \<Rightarrow> ('t \<Rightarrow> 'a \<Rightarrow> 'b) \<Rightarrow> 'b \<Rightarrow> ('t,'a,'b) stochastic_process"
   is "\<lambda> M M' I X \<omega>. if (\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M') \<and> prob_space M \<and> \<omega> \<in> space M'
   then (M, M', I, (\<lambda>t. if t \<in> I then X t else (\<lambda>_. \<omega>)))
-  else (return (sigma UNIV {{}, UNIV}) (SOME x. True), sigma UNIV UNIV, UNIV, \<lambda>_ _. \<omega>)"
+  else (return (sigma UNIV {{}, UNIV}) (SOME x. True), sigma UNIV UNIV, I, \<lambda>_ _. \<omega>)"
   by (simp add: prob_space.stochastic_processI prob_space_return)
+
+lemma index_process_of[simp]: "proc_index (process_of M M' I X \<omega>) = I"
+  by (transfer, auto)
 
 lemma
   assumes "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "prob_space M" "\<omega> \<in> space M'"
   shows
     source_process_of[simp]: "proc_source (process_of M M' I X \<omega>) = M" and
     target_process_of[simp]: "proc_target (process_of M M' I X \<omega>) = M'" and
-    index_process_of[simp]: "proc_index (process_of M M' I X \<omega>) = I" and
     process_process_of[simp]: "process (process_of M M' I X \<omega>) = (\<lambda>t. if t \<in> I then X t else (\<lambda>_. \<omega>))"
   using assms by (transfer, auto)+
 

@@ -1,19 +1,29 @@
 theory Holder_Continuous
-  imports "HOL-Analysis.Analysis"
+  imports "HOL-Analysis.Analysis" "Eisbach_Tools.Apply_Trace_Cmd"
 begin
 
 text \<open> H{\"o}lder continuity is a weaker version of Lipschitz continuity. \<close>
 
-definition holder_at :: "real \<Rightarrow> 'a \<Rightarrow> ('a :: metric_space \<Rightarrow> 'b :: metric_space) \<Rightarrow> bool" where
-"holder_at \<gamma> r \<phi> \<equiv> \<gamma> > 0 \<and> \<gamma> \<le> 1 \<and> 
-  (\<exists>\<epsilon> > 0. \<exists>C. \<forall>s r. dist r s < \<epsilon> \<longrightarrow> dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>)"
+definition holder_at_within :: "real \<Rightarrow> 'a set \<Rightarrow> 'a \<Rightarrow> ('a :: metric_space \<Rightarrow> 'b :: metric_space) \<Rightarrow> bool" where
+"holder_at_within \<gamma> D r \<phi> \<equiv> \<gamma> > 0 \<and> \<gamma> \<le> 1 \<and> 
+  (\<exists>\<epsilon> > 0. \<exists>C \<ge> 0. \<forall>s \<in> D. dist r s < \<epsilon> \<longrightarrow> dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>)"
 
 definition local_holder_on :: "real \<Rightarrow> 'a :: metric_space set \<Rightarrow> ('a \<Rightarrow> 'b :: metric_space) \<Rightarrow> bool" where
 "local_holder_on \<gamma> D \<phi> \<equiv> \<gamma> > 0 \<and> \<gamma> \<le> 1 \<and>
   (\<forall>t\<in>D. \<exists>\<epsilon> > 0. \<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist s t < \<epsilon> \<and> dist r t < \<epsilon> \<longrightarrow> dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
 
+lemma local_holder_onI:
+  assumes "\<gamma> > 0" "\<gamma> \<le> 1" "(\<forall>t\<in>D. \<exists>\<epsilon> > 0. \<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist s t < \<epsilon> \<and> dist r t < \<epsilon> \<longrightarrow> dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
+  shows "local_holder_on \<gamma> D \<phi>"
+  using assms unfolding local_holder_on_def by blast
+
 definition holder_on :: "real \<Rightarrow> 'a :: metric_space set \<Rightarrow> ('a \<Rightarrow> 'b :: metric_space) \<Rightarrow> bool" ("_-holder'_on" 1000) where
 "\<gamma>-holder_on D \<phi> \<longleftrightarrow> \<gamma> > 0 \<and> \<gamma> \<le> 1 \<and> (\<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
+
+lemma holder_onI:
+  assumes "\<gamma> > 0" "\<gamma> \<le> 1" "\<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>)"
+  shows "\<gamma>-holder_on D \<phi>"
+  unfolding holder_on_def using assms by blast
 
 text \<open> We prove various equivalent formulations of local holder continuity, using open and closed
   balls and inequalities. \<close>
@@ -124,7 +134,7 @@ lemma powr_mono_le1:
   shows "g \<le> 1 \<Longrightarrow> h \<le> g \<Longrightarrow> h > 0 \<Longrightarrow> x \<le> 1 \<Longrightarrow> x \<ge> 0 \<Longrightarrow> x powr g \<le> x powr h"
   unfolding powr_def by (simp add: mult_right_mono_neg)
 
-lemma holder_refine:
+lemma local_holder_refine:
   assumes g: "local_holder_on g D \<phi>" "g \<le> 1" 
      and  h: "h \<le> g" "h > 0"
    shows "local_holder_on h D \<phi>"
@@ -196,7 +206,7 @@ lemma holder_implies_local_holder: "\<gamma>-holder_on D \<phi> \<Longrightarrow
    apply (simp add: holder_on_def local_holder_on_def)
    apply (simp add: local_holder_on_altdef holder_on_def)
   apply (metis IntD1 inf.commute)
-  done
+  done    
 
 lemma local_holder_continuous:
   assumes local_holder: "local_holder_on \<gamma> X \<phi>"
@@ -306,5 +316,11 @@ proof -
     by (metis "*"(1) C_bar_def dist_self div_by_0 divide_nonneg_pos divide_powr_uminus 
                     dual_order.trans l max.cobounded2 powr_0 powr_gt_zero)
 qed
+
+lemma holder_const: "\<gamma>-holder_on C (\<lambda>_. c) \<longleftrightarrow> \<gamma> > 0 \<and> \<gamma> \<le> 1"
+  unfolding holder_on_def by auto
+
+lemma local_holder_const: "local_holder_on \<gamma> C (\<lambda>_. c) \<longleftrightarrow> \<gamma> > 0 \<and> \<gamma> \<le> 1"
+  using holder_const holder_implies_local_holder local_holder_on_def by blast
 
 end
