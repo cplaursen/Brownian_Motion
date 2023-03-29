@@ -1,5 +1,5 @@
 theory Kernel
-  imports "HOL-Probability.Probability"
+  imports "HOL-Probability.Probability" "Eisbach_Tools.Apply_Trace_Cmd"
 begin
 
 section \<open> Kernel type \<close>
@@ -56,6 +56,28 @@ lemma (in transition_kernel)
   and countably_additive: "countably_additive (sets M') (\<kappa> \<omega>)"
   using space_source_measure[OF assms] unfolding measure_space_def by (simp_all)
 
+lemma transition_kernel_cong: 
+  assumes "\<And>\<omega> A'. \<omega> \<in> space M \<Longrightarrow> A' \<in> sets M' \<Longrightarrow> f \<omega> A' = g \<omega> A'"
+  shows "transition_kernel M M' f = transition_kernel M M' g"
+proof -
+  {
+    fix f g :: "'a \<Rightarrow> 'b set \<Rightarrow> ennreal"
+    assume eq: "\<And>\<omega> A'. \<omega> \<in> space M \<Longrightarrow> A' \<in> sets M' \<Longrightarrow> f \<omega> A' = g \<omega> A'"
+       and f: "transition_kernel M M' f"
+    then have "A' \<in> sets M' \<Longrightarrow> (\<lambda>\<omega>. g \<omega> A') \<in> borel_measurable M" for A'
+      apply (subst measurable_cong[where g="\<lambda>\<omega>. f \<omega> A'"])
+       apply presburger
+       unfolding transition_kernel_def apply blast
+       done
+     moreover have "\<omega> \<in> space M \<Longrightarrow> measure_space (space M') (sets M') (g \<omega>)" for \<omega>
+       by (metis eq f measure_space_eq sets.sigma_sets_eq sets.space_closed transition_kernel.space_source_measure)
+     ultimately have "transition_kernel M M' g"
+       unfolding transition_kernel_def by presburger
+  }
+  then show ?thesis
+    by (intro iffI; metis assms)
+qed
+
 text \<open> Klenke remark 8.26 \<close>
 lemma kernel_measurable_pi_system:
   assumes "\<And>A'. A' \<in> P \<Longrightarrow> (\<lambda>\<omega>. \<kappa> \<omega> A') \<in> M \<rightarrow>\<^sub>M borel" "Int_stable P" "sigma_sets (space M') P = sets M'" "space M' \<in> P"
@@ -73,17 +95,14 @@ typedef ('a, 'b) kernel =
     transition_kernel M M' \<kappa> \<and> (\<forall>\<omega>. \<forall>A'. \<omega> \<in> -space M \<or> A' \<in> -sets M' \<longrightarrow> \<kappa> \<omega> A' = 0)}"
   using transition_kernel_zero by blast
 
-definition kernel_source :: "('a, 'b) kernel \<Rightarrow> 'a measure" where
-"kernel_source K = fst (Rep_kernel K)"
+setup_lifting type_definition_kernel
 
-definition kernel_target :: "('a, 'b) kernel \<Rightarrow> 'b measure" where
-"kernel_target K = fst (snd (Rep_kernel K))"
+lift_definition kernel_source :: "('a, 'b) kernel \<Rightarrow> 'a measure" is fst .
 
-definition kernel :: "('a, 'b) kernel \<Rightarrow> 'a \<Rightarrow> 'b set \<Rightarrow> ennreal" where
-"kernel K = snd (snd (Rep_kernel K))"
+lift_definition kernel_target :: "('a, 'b) kernel \<Rightarrow> 'b measure" is "fst \<circ> snd" .
 
-declare [[coercion kernel_source]]
-declare [[coercion kernel_target]]
+lift_definition kernel :: "('a, 'b) kernel \<Rightarrow> 'a \<Rightarrow> 'b set \<Rightarrow> ennreal" is "snd \<circ> snd" .
+
 declare [[coercion kernel]]
 
 interpretation kernel: transition_kernel "kernel_source K" "kernel_target K" "kernel K"
@@ -101,41 +120,34 @@ lemma kernel_empty [simp]: "kernel K \<omega> {} = 0"
     apply (fact kernel_not_space_zero)
   done
 
-definition kernel_of :: "'a measure \<Rightarrow> 'b measure \<Rightarrow> ('a \<Rightarrow> 'b set \<Rightarrow> ennreal) \<Rightarrow> ('a, 'b) kernel"
-  where
-"kernel_of M M' \<kappa> =
-   Abs_kernel (M, M',
-   \<lambda>\<omega> A'. if \<omega> \<in> space M \<and> A' \<in> sets M' \<and> transition_kernel M M' \<kappa> then \<kappa> \<omega> A' else 0)"
-
-lemma transition_kernel_kernel_of [simp]: "transition_kernel M M' 
-  (\<lambda>\<omega> A'. if \<omega> \<in> space M \<and> A' \<in> sets M' \<and> transition_kernel M M' \<kappa> then \<kappa> \<omega> A' else 0)"
-  by (cases "transition_kernel M M' \<kappa>") auto
-                                                                
+lift_definition kernel_of :: "'a measure \<Rightarrow> 'b measure \<Rightarrow> ('a \<Rightarrow> 'b set \<Rightarrow> ennreal) \<Rightarrow> ('a, 'b) kernel"
+  is"\<lambda>M M' \<kappa>. (M, M', \<lambda>\<omega> A'. if \<omega> \<in> space M \<and> A' \<in> sets M' \<and> transition_kernel M M' \<kappa>
+                             then \<kappa> \<omega> A' else 0)"
+  subgoal for M M' \<kappa>
+    by (cases "transition_kernel M M' \<kappa>") auto
+  done
+                                                                 
 lemma source_kernel_of [simp]: "kernel_source (kernel_of M M' \<kappa>) = M"
-  unfolding kernel_of_def kernel_source_def apply (subst Abs_kernel_inverse)
-  by auto
+  by (transfer, auto)
 
 lemma target_kernel_of [simp]: "kernel_target (kernel_of M M' \<kappa>) = M'"
-  unfolding kernel_of_def kernel_target_def apply (subst Abs_kernel_inverse)
-  by auto
+  by (transfer, auto)
 
 lemma kernel_apply_kernel_of [simp]:
   assumes "\<omega> \<in> space M" "A' \<in> sets M'" "transition_kernel M M' \<kappa>"
   shows "kernel (kernel_of M M' \<kappa>) \<omega> A' = \<kappa> \<omega> A'"
-  unfolding kernel_of_def apply (simp add: kernel_def)
-  apply (subst Abs_kernel_inverse)
-  using assms apply auto
-  done
+  using assms by (transfer, auto)
 
 text \<open> Homogeneous kernel \<close>
 typedef 'a hkernel = "{K :: ('a, 'a) kernel. kernel_source K = kernel_target K}"
   morphisms from_hkernel hkernel
   by (simp, metis source_kernel_of target_kernel_of)
 
+setup_lifting type_definition_hkernel
+
 declare [[coercion from_hkernel]]
 
-definition hkernel_space :: "'a hkernel \<Rightarrow> 'a measure" where
-[simp]: "hkernel_space K \<equiv> kernel_source (from_hkernel K)"
+lift_definition hkernel_space :: "'a hkernel \<Rightarrow> 'a measure" is kernel_source .
 
 lemma hkernel_source_eq_target: 
   "kernel_source (from_hkernel K) = kernel_target (from_hkernel K)"
@@ -145,24 +157,50 @@ lemma from_hkernel_kernel_of_inverse [simp]:
   "from_hkernel (hkernel (kernel_of M M \<kappa>)) = (kernel_of M M \<kappa>)"
   by (simp add: hkernel_inverse)
 
-definition kernel_measure :: "('a, 'b) kernel \<Rightarrow> 'a \<Rightarrow> 'b measure" where
-"kernel_measure K \<omega> = measure_of (space (kernel_target K)) (sets (kernel_target K)) (kernel K \<omega>)"
+lift_definition kernel_measure :: "('a, 'b) kernel \<Rightarrow> 'a \<Rightarrow> 'b measure" is
+"\<lambda>(M, M', \<kappa>) \<omega>. measure_of (space M') (sets M') (\<lambda>A'. \<kappa> \<omega> A')" .
+
+lemma kernel_measure_altdef:
+  "kernel_measure K \<omega> = measure_of (space (kernel_target K)) (sets (kernel_target K)) (\<lambda>A'. K \<omega> A')"
+  by (transfer, auto)
 
 lemma kernel_measure_space [simp]: "space (kernel_measure K \<omega>) = space (kernel_target K)"
-  by (simp add: kernel_measure_def)
+  by (transfer, auto)
 
 lemma kernel_measure_sets [simp]: "sets (kernel_measure K \<omega>) = sets (kernel_target K)"
-  by (simp add: kernel_measure_def)
+  by (transfer, auto)
 
 lemma kernel_measure_emeasure: "emeasure (kernel_measure K \<omega>) = kernel K \<omega>"
-  unfolding kernel_measure_def
-  apply (subst emeasure_measure_of_conv)
-  apply (auto simp add: fun_eq_iff)
-   apply (metis kernel_not_sets_zero sets.sigma_sets_eq)
-  by (metis kernel_not_space_zero sets.sigma_sets_eq kernel.space_source_measure)
+  apply (rule ext)
+  subgoal for A'
+    apply (cases "\<omega> \<in> space (kernel_source K) \<and> A' \<in> sets (kernel_target K)")
+     apply (transfer, auto)[1]
+     apply (meson emeasure_measure_of_sigma sets.sigma_algebra_axioms
+                 transition_kernel.countably_additive transition_kernel.positive)
+    apply (transfer, auto)
+     apply (metis emeasure_measure_of_conv)
+    using emeasure_neq_0_sets sets.sets_measure_of_eq apply blast
+    done
+  done
+
+lemma kernel_measure_notin_space:
+  assumes "\<omega> \<notin> space (kernel_source K)"
+  shows "kernel_measure K \<omega> = measure_of (space (kernel_target K)) (sets (kernel_target K)) (\<lambda>_. 0)"
+  using assms apply (transfer, auto)
+  by presburger
 
 lemma measurable_kernel_measure: "(f \<in> (kernel_measure K \<omega>) \<rightarrow>\<^sub>M M) = (f \<in> (kernel_target K) \<rightarrow>\<^sub>M M)"
-  by (metis kernel_measure_sets measurable_cong_sets)
+  by (auto simp: measurable_cong_sets[of "kernel_measure K \<omega>" "kernel_target K" M M])
+
+lemma kernel_measure_kernel_of:
+  assumes "\<omega> \<in> space M" "transition_kernel M M' \<kappa>"
+  shows "kernel_measure (kernel_of M M' \<kappa>) \<omega> = measure_of (space M') (sets M') (\<lambda>A'. \<kappa> \<omega> A')"
+  using assms apply transfer
+    apply simp
+    apply (intro measure_of_eq)
+      using sets.space_closed apply blast
+      using sets.sigma_sets_eq apply auto
+  done
 
 locale sigma_finite_kernel =
   fixes K :: "('a, 'b) kernel"
@@ -210,7 +248,7 @@ lemma stochastic_kernelI:
 
 lemma (in stochastic_kernel) kernel_space_eq_1 [simp]:
   assumes "\<omega> \<in> space (kernel_source K)"
-  shows "K \<omega> (space K) = 1"
+  shows "K \<omega> (space (kernel_target K)) = 1"
   by (metis probability_measures[OF assms] kernel_measure_emeasure 
             kernel_measure_space prob_space.emeasure_space_1)
 
@@ -235,13 +273,13 @@ lemma (in substochastic_kernel) kernel_leq_1 [simp]: "kernel K \<omega> A' \<le>
    apply auto
   done
 
-lemma kernel_of_eq:
+lemma kernel_of_cong:
   assumes "\<And>\<omega> A'. \<omega> \<in> space M \<and> A' \<in> sets M' \<Longrightarrow> \<kappa> \<omega> A' = \<kappa>' \<omega> A'"
   shows "kernel_of M M' \<kappa> = kernel_of M M' \<kappa>'"
-  unfolding kernel_of_def apply (subst Abs_kernel_inject)
-  using assms apply (auto simp add: fun_eq_iff)
+  using assms apply (transfer, auto simp add: fun_eq_iff)
   unfolding transition_kernel_def
-  by (smt (verit, ccfv_SIG) measurable_cong measure_space_eq sets.sigma_sets_eq sets.space_closed)+
+   apply (smt (verit, best) measurable_cong measure_space_eq sets.sigma_sets_eq sets.space_closed)+
+  done
 
 text \<open> Klenke lemma 14.23 \<close>
 
@@ -263,8 +301,7 @@ proof -
     assume *: "A\<^sub>1 \<in> ?A\<^sub>1" "A\<^sub>2 \<in> ?A\<^sub>2"
     then have "I (indicator (A\<^sub>1 \<times> A\<^sub>2)) = (\<lambda>\<omega>\<^sub>1. indicator A\<^sub>1 \<omega>\<^sub>1 * kernel K \<omega>\<^sub>1 A\<^sub>2)"
       unfolding I_def apply (subst nn_integral_eq_simple_integral)
-      unfolding kernel_measure_def apply (auto simp: indicator_times)
-      by (metis kernel_measure_def kernel_measure_emeasure)
+      by (transfer, auto simp: indicator_times kernel_measure_emeasure)
     also have "... \<in> borel_measurable (kernel_source K)"
       using * by measurable
     finally have "I (indicator (A\<^sub>1 \<times> A\<^sub>2)) \<in> borel_measurable (kernel_source K)" .
@@ -449,11 +486,52 @@ theorem return_kernel[simp]: "transition_kernel M M (return M)"
   apply (rule transition_kernelI)
   by (force, metis measure_space sets_return space_return)
 
+text \<open> The emeasure kernel is a kernel that ignores its first argument. \<close>
 lemma emeasure_transition_kernel: "transition_kernel M M' (\<lambda>\<omega> A. emeasure M' A)"
   apply unfold_locales
    apply measurable
    apply (simp add: measure_space)
   done
+
+lift_definition emeasure_kernel :: "'a measure \<Rightarrow> 'b measure \<Rightarrow> ('a,'b) kernel" is
+"\<lambda> M M'. (M, M', (\<lambda>\<omega> A. if \<omega> \<in> space M then emeasure M' A else 0))"
+  unfolding transition_kernel_def apply safe
+     apply measurable
+    apply (simp add: measure_space)
+  apply simp
+  apply (meson emeasure_notin_sets)
+  done
+
+lemma emeasure_kernel_source[simp]: "kernel_source (emeasure_kernel M M') = M"
+  by (transfer, auto)
+
+lemma emeasure_kernel_target[simp]: "kernel_target (emeasure_kernel M M') = M'"
+  by (transfer, auto)
+
+lemma emeasure_kernel_notin[simp]: "\<omega> \<notin> space M \<Longrightarrow> (emeasure_kernel M M') \<omega> A' = 0"
+  by (transfer, auto)
+
+lemma emeasure_kernel_emeasure[simp]: "\<omega> \<in> space M \<Longrightarrow> (emeasure_kernel M M') \<omega> = emeasure M'"
+  by (transfer, auto)
+
+lemma kernel_measure_emeasure_kernel[simp]:
+  "\<omega> \<in> space M \<Longrightarrow> kernel_measure (emeasure_kernel M M') \<omega> = M'"
+  by (transfer, auto simp: measure_of_of_measure)
+
+lemma emeasure_kernel_sigma_finite:
+  "sigma_finite_measure M' \<Longrightarrow> sigma_finite_kernel (emeasure_kernel M M')"
+  by (simp add: sigma_finite_kernel_def)
+
+lemma emeasure_kernel_finite: "finite_measure M' \<Longrightarrow> finite_kernel (emeasure_kernel M M')"
+  by (metis emeasure_kernel_source finite_kernelI kernel_measure_emeasure_kernel)
+
+lemma emeasure_kernel_stochastic:
+  "prob_space M' \<Longrightarrow> stochastic_kernel (emeasure_kernel M M')"
+  using stochastic_kernelI by force
+
+lemma emeasure_kernel_substochastic:
+  "subprob_space M' \<Longrightarrow> substochastic_kernel (emeasure_kernel M M')"
+  using substochastic_kernelI by force
 
 lemma
   fixes \<pi> :: "nat \<Rightarrow> nat \<Rightarrow> ennreal"
