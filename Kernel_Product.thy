@@ -484,12 +484,12 @@ section \<open> Kernel semidirect product \<close>
 lemma arg_cong3: "\<lbrakk>a = d; b = e; c = f\<rbrakk> \<Longrightarrow> g a b c = g d e f"
   by simp
 
-lemma 
+lemma semidirect_product_unique:
   assumes space: "x \<in> space M" "y \<in> space M"
     and finite: "finite_measure M" "finite_kernel K"
     and sets: "sets M = sets (kernel_source K)"
-  shows "kernel_measure (kernel_of M M (\<lambda>\<omega> A. emeasure M A) \<Otimes>\<^sub>P K) x
-       = kernel_measure (kernel_of M M (\<lambda>\<omega> A. emeasure M A) \<Otimes>\<^sub>P K) y"
+  shows "kernel_measure (emeasure_kernel M M \<Otimes>\<^sub>P K) x = kernel_measure (emeasure_kernel M M \<Otimes>\<^sub>P K) y"
+ (* Disgusting proof *)
   unfolding kernel_measure_altdef
   apply (rule arg_cong3[where g=measure_of])
     apply simp_all
@@ -509,9 +509,10 @@ lemma
     using sets apply simp
     using space apply simp
     using sets apply simp
-    unfolding kernel_measure_altdef apply auto
-    unfolding nn_integral_def apply simp
-    sorry
+    using assms apply simp
+      apply simp
+    using emeasure_kernel_finite local.finite(1) apply blast+
+    done
   done
 
 definition kernel_semidirect_product :: "'a measure \<Rightarrow> ('a, 'b) kernel \<Rightarrow> ('a \<times> 'b) measure" (infixr "(\<otimes>\<^sub>S)" 70)
