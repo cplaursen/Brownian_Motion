@@ -227,6 +227,12 @@ definition compatible :: "('t,'a,'b) stochastic_process \<Rightarrow> ('t,'a,'b)
 "compatible X Y \<longleftrightarrow> proc_source X = proc_source Y \<and> sets (proc_target X) = sets (proc_target Y)
   \<and> proc_index X = proc_index Y"
 
+lemma compatibleI:
+  assumes "proc_source X = proc_source Y" "sets (proc_target X) = sets (proc_target Y)"
+          "proc_index X = proc_index Y"
+  shows "compatible X Y"
+  unfolding compatible_def using assms by simp
+
 lemma
   assumes "compatible X Y"
   shows
@@ -245,6 +251,12 @@ lemma compatible_trans:
   assumes "compatible X Y" "compatible Y Z"
     shows "compatible X Z"
   using assms unfolding compatible_def by argo
+
+lemma compatible_process_of:
+  assumes measurable: "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "\<forall>t \<in> I. Y t \<in> M \<rightarrow>\<^sub>M M'" 
+      and "prob_space M" "a \<in> space M'" "b \<in> space M'"
+  shows "compatible (process_of M M' I X a) (process_of M M' I Y b)"
+  unfolding compatible_def using assms by force
 
 definition modification :: "('t,'a,'b) stochastic_process \<Rightarrow> ('t,'a,'b) stochastic_process \<Rightarrow> bool" where
 "modification X Y \<longleftrightarrow> compatible X Y \<and> (\<forall>t \<in> proc_index X. AE x in proc_source X. X t x = Y t x)"

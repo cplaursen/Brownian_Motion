@@ -1,5 +1,5 @@
 theory Markov_Semigroup
-  imports Kernel_Composition
+  imports Kernel_Composition "Eisbach_Tools.Apply_Trace_Cmd"
 begin
 
 text \<open> Klenke definition 14.42 \<close>
@@ -25,8 +25,7 @@ locale markov_semigroup =
    \<Longrightarrow> kernel_measure (K 0) \<omega> = return (kernel_source (K 0)) \<omega>"
       and comp_sum: "\<And>s t. \<lbrakk>s \<ge> 0; t \<ge> 0\<rbrakk> \<Longrightarrow> K s \<circ>\<^sub>K K t = K (s + t)"
       and stochastic: "\<And>i. i \<ge> 0 \<Longrightarrow> stochastic_kernel (K i)"
-
-context markov_semigroup begin
+begin
 
 lemma kernel_comp_commute: "\<lbrakk>s \<ge> 0; t \<ge> 0\<rbrakk> \<Longrightarrow> K s \<circ>\<^sub>K K t = K t \<circ>\<^sub>K K s"
   by (simp add: add.commute comp_sum)
