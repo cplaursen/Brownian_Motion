@@ -52,34 +52,6 @@ proof -
   qed
 qed
 
-(* TODO: see if we can reduce the typeclasses of 'a *)
-lemma suminf_shift_1:
-  assumes "summable (f :: nat \<Rightarrow> 'a :: {t2_space, topological_group_add, comm_monoid_add})"
-  shows "(\<Sum>n. f n) = f 0 + (\<Sum>n. f (Suc n))"
-proof -
-  obtain s where s: "s = suminf f"
-    using assms summable_def by blast
-  then have "(\<lambda>n. \<Sum>i\<le>n. f i) \<longlonglongrightarrow> s"
-    using summable_LIMSEQ'[OF assms] by argo
-  then have "(\<lambda>n. f 0 + (\<Sum>i<n. f (Suc i))) \<longlonglongrightarrow> s"
-    by (simp add: sum.atMost_shift)
-  then have "(\<lambda>n. f 0 +  (\<Sum>i<n. f (Suc i)) - f 0) \<longlonglongrightarrow> (s - f 0)"
-    using tendsto_diff by blast
-  moreover have "(\<lambda>n. f 0 +  (\<Sum>i<n. f (Suc i)) - f 0) = (\<lambda>n. (\<Sum>i<n. f (Suc i)))"
-    by (metis add.commute add_diff_cancel)
-  ultimately have "(\<lambda>n. \<Sum>i<n. f (Suc i)) \<longlonglongrightarrow> (s - f 0)"
-    by argo
-  then have *: "(\<Sum>n. f (Suc n)) = (s - f 0)"
-    using sums_def sums_iff by blast
-  then show ?thesis
-    by (metis s add.commute diff_add_cancel)
-qed
-
-lemma suminf_split:
-  assumes "summable (f :: nat \<Rightarrow> 'a :: {t2_space, topological_group_add, comm_monoid_add})"
-  shows "(\<Sum>n. f n) = (\<Sum>i<k. f k) + (\<Sum>n. f (n + k))"
-  sorry
-
 lemma Max_finite_image_ex:
   assumes "finite S" "S \<noteq> {}" "P (MAX k\<in>S. f k)" 
   shows "\<exists>k \<in> S. P (f k)"
@@ -91,7 +63,12 @@ lemma measure_leq_emeasure_ennreal: "0 \<le> x \<Longrightarrow> emeasure M A \<
    apply (auto simp: measure_notin_sets emeasure_notin_sets)
   done
 
-thm tendsto_at_iff_sequentially
+
+lemma Union_add_subset: "(m :: nat) \<le> n \<Longrightarrow> (\<Union>k. A (k + n)) \<subseteq> (\<Union>k. A (k + m))"
+  apply (subst subset_eq)
+  apply simp
+  apply (metis add.commute le_iff_add trans_le_add1)
+  done
 
 text \<open> Klenke 21.6 - Kolmorogov-Chentsov\<close>
 
@@ -101,31 +78,38 @@ theorem holder_continuous_modification:
       and real_valued[measurable]: "proc_target X = borel"
       and gt_0: "a > 0" "b > 0" "C > 0"
       and "b \<le> a" (* Probably follows from other assms *)
+      and gamma: "\<gamma> \<in> {0<..<b/a}"
       and integrable_X: "\<And>s t. t \<ge> 0 \<Longrightarrow> integrable (proc_source X) (X t)"
       and expectation: "\<And>s t.\<lbrakk>s \<ge> 0; t \<ge> 0\<rbrakk> \<Longrightarrow> 
           (\<integral>\<^sup>+ x. \<bar>X t x - X s x\<bar> powr a \<partial>proc_source X) \<le> C * (dist t s) powr (1+b)"
-    shows "\<exists>Y. modification X Y \<and> (\<forall>\<gamma>\<in>{0<..<(b / a)}. \<forall>x \<in> space (proc_source X). local_holder_on \<gamma> {0..} (\<lambda>t. Y t x))"
+    shows "\<exists>Y. modification X Y \<and> (\<forall>x \<in> space (proc_source X). local_holder_on \<gamma> {0..} (\<lambda>t. Y t x))"
 proof -
   let ?M = "proc_source X"
-  {
-    text \<open> Here we show that the increments of the stochastic process tend to 0 a.e. as the 
-           increment size becomes smaller \<close>
-    fix s t \<epsilon> :: real assume *: "s \<ge> 0" "t \<ge> 0" "\<epsilon> > 0"
+
+  have "0 < \<gamma>" "\<gamma> < 1"
+    using gamma apply simp
+    by (metis assms(6) divide_le_eq_1_pos gamma greaterThanLessThan_iff gt_0(1) order_less_le_trans)
+  text \<open> Consequence of @{thm nn_integral_Markov_inequality'} \<close>
+  have markov: "\<P>(x in ?M. \<epsilon> \<le> \<bar>X t x - X s x\<bar>) \<le> (C * dist t s powr (1 + b)) / \<epsilon> powr a"
+    if "s \<ge> 0" "t \<ge> 0" "\<epsilon> > 0" for s t \<epsilon>
+  proof -
     let ?inc = "\<lambda>x. \<bar>X t x - X s x\<bar> powr a"
     have "emeasure ?M {x \<in> space ?M. \<epsilon> \<le> \<bar>X t x - X s x\<bar>}
      \<le> integral\<^sup>N ?M ?inc / \<epsilon> powr a"
       apply (rule nn_integral_Markov_inequality')
-      using *(1,2) borel_measurable_diff integrable_X apply blast
-      using gt_0(1) *(3) powr_mono2 by (auto intro: mono_onI)
+      using that(1,2) borel_measurable_diff integrable_X apply blast
+      using gt_0(1) that(3) powr_mono2 by (auto intro: mono_onI)
     also have "... \<le> (C * dist t s powr (1 + b)) / ennreal (\<epsilon> powr a)"
       apply (rule divide_right_mono_ennreal)
-      using expectation[OF *(1,2)] ennreal_leI by presburger
+      using expectation[OF that(1,2)] ennreal_leI by presburger
     finally have "emeasure ?M {x \<in> space ?M. \<epsilon> \<le> \<bar>X t x - X s x\<bar>}
        \<le> (C * dist t s powr (1 + b)) / \<epsilon> powr a"
-      using *(3) divide_ennreal gt_0(3) by simp
-    then have "\<P>(x in ?M. \<epsilon> \<le> \<bar>X t x - X s x\<bar>) \<le> (C * dist t s powr (1 + b)) / \<epsilon> powr a"
-      by (smt (verit, del_insts) divide_nonneg_nonneg ennreal_le_iff gt_0(3) mult_nonneg_nonneg powr_ge_pzero proc_source.emeasure_eq_measure)
-  } note markov = this
+      using that(3) divide_ennreal gt_0(3) by simp
+    moreover have "C * dist t s powr (1 + b) / \<epsilon> powr a \<ge> 0"
+      using gt_0(3) by auto
+    ultimately show ?thesis
+      by (simp add: proc_source.emeasure_eq_measure)
+  qed
 
   text \<open> X s \<longlongrightarrow> X t as s \<longlongrightarrow> t in probability \<close>
   have conv_in_prob: "((\<lambda>s. \<P>(x in ?M. \<epsilon> \<le> \<bar>X t x - X s x\<bar>)) \<longlongrightarrow> 0)(at t within ({0..}))"
@@ -137,38 +121,35 @@ proof -
       using \<open>0 < p\<close> gt_0(3) that(2) by simp
     have p_eq: "p = (C * ?q powr (1 + b)) / \<epsilon> powr a"
       using gt_0 \<open>0 < ?q\<close> \<open>0 < p\<close> by (simp add: field_simps powr_powr)
-    have "\<forall>x\<in>{0..}. 0 < dist x t \<and> dist x t < ?q \<longrightarrow> dist \<P>(xa in proc_source X. \<epsilon> \<le> \<bar>process X t xa - process X x xa\<bar>) 0 \<le> p"
+    have "\<forall>x\<in>{0..}. 0 < dist x t \<and> dist x t < ?q \<longrightarrow> dist \<P>(xa in ?M. \<epsilon> \<le> \<bar>process X t xa - process X x xa\<bar>) 0 \<le> p"
     proof (clarsimp)
       fix s ::real assume "0 \<le> s" "dist s t < ?q"
-      then have "C * dist t s powr (1 + b) / \<epsilon> powr a \<le> p"
-        by (smt (verit, best) dist_commute divide_less_cancel gt_0(2) gt_0(3) mult_less_cancel_left_pos p_eq powr_ge_pzero powr_less_mono2 zero_le_dist)
-      then show "\<P>(x in proc_source X. \<epsilon> \<le> \<bar>process X t x - process X s x\<bar>) \<le> p"
-        using markov[OF \<open>0 \<le> s\<close> \<open>0 \<le> t\<close> \<open>0 < \<epsilon>\<close>] by linarith
+      then have "C * dist s t powr (1 + b) / \<epsilon> powr a \<le> p"
+        apply (subst p_eq)
+        using gt_0(2) gt_0(3) apply (simp add: divide_le_cancel powr_mono2)
+        done
+      then show "\<P>(x in ?M. \<epsilon> \<le> \<bar>process X t x - process X s x\<bar>) \<le> p"
+        using markov[OF \<open>0 \<le> s\<close> \<open>0 \<le> t\<close> \<open>0 < \<epsilon>\<close>] by (simp add: dist_commute)
     qed
     then show "\<exists>d>0. \<forall>x\<in>{0..}. 0 < dist x t \<and> dist x t < d \<longrightarrow> dist \<P>(xa in proc_source X. \<epsilon> \<le> \<bar>process X t xa - process X x xa\<bar>) 0 \<le> p"
       apply (intro exI[where x="?q"])
       using \<open>0 < p\<close> gt_0(3) that(2) by fastforce
   qed
 
-  {
-    fix n k \<gamma> :: real
-    assume gamma: "\<gamma> > 0"
-       and k: "k \<ge> 1"
-       and n: "n \<ge> 0"
-    have "\<P>(x in ?M. 2 powr (- \<gamma> * n) \<le> \<bar>X ((k - 1) * 2 powr - n) x - X (k * 2 powr - n) x\<bar>) \<le> C * 2 powr (-n * (1+b-a*\<gamma>))"
-    proof -
-      have "\<P>(x in ?M. 2 powr (- \<gamma> * n) \<le> \<bar>X ((k - 1) * 2 powr - n) x - X (k * 2 powr - n) x\<bar>)
-           \<le> C * dist ((k - 1) * 2 powr - n) (k * 2 powr - n) powr (1 + b) / (2 powr (- \<gamma> * n)) powr a"
-        apply (rule markov)
-        using k by auto
-      also have "... = C * 2 powr (- n - b * n) / 2 powr (- \<gamma> * n * a)"
-        by (auto simp: dist_real_def n k gamma powr_powr field_simps)
-      also have "... =  C * 2 powr (-n * (1+b-a*\<gamma>))"
-        apply (auto simp: field_simps)
-        by (smt (verit) powr_add)
-      finally show ?thesis .
-    qed
-  } note incr = this
+  have incr: "\<P>(x in ?M. 2 powr (- \<gamma> * n) \<le> \<bar>X ((k - 1) * 2 powr - n) x - X (k * 2 powr - n) x\<bar>) \<le> C * 2 powr (-n * (1+b-a*\<gamma>))"
+    if "\<gamma> > 0" "k \<ge> 1" "n \<ge> 0" for \<gamma> k n
+  proof -
+    have "\<P>(x in ?M. 2 powr (- \<gamma> * n) \<le> \<bar>X ((k - 1) * 2 powr - n) x - X (k * 2 powr - n) x\<bar>)
+         \<le> C * dist ((k - 1) * 2 powr - n) (k * 2 powr - n) powr (1 + b) / (2 powr (- \<gamma> * n)) powr a"
+      apply (rule markov)
+      using that by auto
+    also have "... = C * 2 powr (- n - b * n) / 2 powr (- \<gamma> * n * a)"
+      by (auto simp: dist_real_def that powr_powr field_simps)
+    also have "... =  C * 2 powr (-n * (1+b-a*\<gamma>))"
+      apply (auto simp: field_simps)
+      by (smt (verit) powr_add)
+    finally show ?thesis .
+      qed
     
   text \<open> In the textbook, we define the following:
   A_n(\<gamma>) = {x. max {\<bar>X ((k - 1) * 2 powr - n) x - X (k * 2 powr - n) x\<bar>, k \<in> {0..2^n}} \<ge> 2 powr -\<gamma> * n}
@@ -180,19 +161,12 @@ proof -
 
   {
     fix T :: real assume "T > 0"
-    fix \<gamma> :: real assume "\<gamma> \<in> {0<..<b/a}"
-    then have "\<gamma> > 0"
-      by auto
-    have \<open>\<gamma> \<le> 1\<close>
-      by (metis \<open>\<gamma> \<in> {0<..<b/a}\<close> \<open>b \<le> a\<close> greaterThanLessThan_iff gt_0(1) less_divide_eq_1_pos linorder_not_le not_less_iff_gr_or_eq order_less_le_trans)
-    have "b - a * \<gamma> > 0"
-        using \<open>\<gamma> \<in> {0<..<b/a}\<close> by (simp add: gt_0(1) less_divide_eq mult.commute)
     define A where "A \<equiv> \<lambda>n. if 2 ^ n * T < 1 then {} else 
   {x \<in> space ?M. 
     Max {\<bar>X (real_of_int (k - 1) * 2 powr - real n) x - X (real_of_int k * 2 powr - real n) x\<bar> | k. k \<in> {1..\<lfloor>2^n * T\<rfloor>}}
        \<ge> 2 powr (-\<gamma> * real n)}"
-    let ?B = "\<lambda>n. (\<Union>m\<in>{n..}. A m)"
-    let ?N = "\<Inter>n \<in> {1..}. ?B n"
+    let ?B = "\<lambda>n. (\<Union>m. A (m + n))"
+    let ?N = "\<Inter> (range ?B)"
     have A_geq: "2 ^ n * T \<ge> 1 \<Longrightarrow> A n = {x \<in> space ?M. 
     Max {\<bar>X (real_of_int (k - 1) * 2 powr - real n) x - X (real_of_int k * 2 powr - real n) x\<bar> | k. k \<in> {1..\<lfloor>2^n * T\<rfloor>}}
        \<ge> 2 powr (-\<gamma> * real n)}" for n
@@ -204,10 +178,11 @@ proof -
         apply measurable
         apply (metis random_X real_valued)+
       done
-    {
-      fix n assume [simp]: "2^n * T \<ge> 1"
-      then have nonempty: "{1..\<lfloor>2^n * T\<rfloor>} \<noteq> {}"
-        by fastforce
+    have "emeasure ?M (A n) \<le> ennreal (C * T * 2 powr (real_of_int (- int n) * (b - a * \<gamma>)))"
+      if [simp]: "2^n * T \<ge> 1" for n
+    proof -
+      have nonempty: "{1..\<lfloor>2^n * T\<rfloor>} \<noteq> {}"
+        using that by fastforce
       have finite: "finite {1..\<lfloor>2^n * T\<rfloor>}"
         by simp
       have "emeasure ?M (A n) \<le> emeasure ?M (\<Union>k \<in> {1..\<lfloor>2^n * T\<rfloor>}.
@@ -269,14 +244,16 @@ proof -
         by (smt (verit)\<open>T > 0\<close> \<open>C > 0\<close> powr_add powr_realpow)
       also have "... = C * T * 2 powr (- n * (b - a * \<gamma>))"
         by (simp add: field_simps)
-      finally have "emeasure ?M (A n) \<le> C * T * 2 powr (- n * (b - a * \<gamma>))" .
-    }
+      finally show "emeasure ?M (A n) \<le> C * T * 2 powr (- n * (b - a * \<gamma>))" .
+    qed
     then have A: "measure ?M (A n) \<le> C * T * 2 powr (- n * (b - a * \<gamma>))" for n
       apply (cases "1 \<le> 2 ^ n * T")
        apply (rule measure_leq_emeasure_ennreal)
       using gt_0(3) \<open>T > 0\<close> apply auto[1]
       apply (simp add: A_geq)
       using \<open>0 < T\<close> gt_0(3) unfolding A_def by force
+    have "b - a * \<gamma> > 0"
+        using \<open>\<gamma> \<in> {0<..<b/a}\<close> by (simp add: gt_0(1) less_divide_eq mult.commute)
     have 1: "2 powr (- real x * (b - a * \<gamma>)) = (1 / 2 powr (b - a * \<gamma>)) ^ x" for x
         apply (cases "x = 0")
         by (simp_all add: field_simps powr_add[symmetric] powr_realpow[symmetric] powr_powr)
@@ -287,48 +264,65 @@ proof -
       then show "summable (\<lambda>x. 2 powr (- real x * (b - a * \<gamma>)))"
         using 1 by simp
     qed
-    have "(\<Sum>n. (C * T) * 2 powr (- n * (b - a * \<gamma>))) = C * T * 2 powr (b - \<gamma> * a) / (2 powr (b - \<gamma> * a) - 1)"
-    proof -
-      have "(\<Sum>n. (C * T) * 2 powr (- n * (b - a * \<gamma>))) = (C * T) * (\<Sum>n. 2 powr (- n * (b - a * \<gamma>)))"
-        by (fact suminf_mult[OF 2])
-      moreover have "(\<Sum>n. 2 powr (- n * (b - a * \<gamma>))) = 1/(1- (1/2 powr (b - a * \<gamma>)))"
-        apply (subst 1)
-        apply (rule suminf_geometric)
-        using \<open>0 < b - a * \<gamma>\<close> by auto
-      also have "... = 2 powr (b - \<gamma> * a) / (2 powr (b - \<gamma> * a) - 1)"
-        by (simp add: field_simps)
-      finally show ?thesis
-        by force
-    qed
-    have summable_A: "summable (\<lambda>m. Sigma_Algebra.measure (proc_source X) (A m))"
+    have "summable (\<lambda>m. measure ?M (A m))"
       apply (rule summable_comparison_test_ev)
        apply (rule eventuallyI)
        apply simp
        apply (fact A)
       using 2 summable_mult by blast
-    then have "summable (\<lambda>m. Sigma_Algebra.measure (proc_source X) (A (m + n)))" for n
+    then have summable_A:  "summable (\<lambda>m. measure ?M(A (m + n)))" for n
       by (subst summable_iff_shift)
-    {
-      fix n
-      have "measure ?M (?B n) \<le> (\<Sum>m. measure ?M (A (m + n)))"
-        sorry
-      also have "... \<le> C * T * (2 powr (b - \<gamma> * a) / (2 powr (b - \<gamma> * a) - 1) - (\<Sum>m<n. measure ?M (A m)))"
-        sorry
-      finally have "measure ?M (?B n) \<le> C * T * (2 powr (b - \<gamma> * a) / (2 powr (b - \<gamma> * a) - 1) - (\<Sum>m<n. measure ?M (A m)))"
-        .
-    }
-    then have "(\<lambda>n. measure ?M (?B n)) \<longlonglongrightarrow> 0"
-      sorry
+    then have lim_B: "(\<lambda>n. measure ?M (?B n)) \<longlonglongrightarrow> 0"
+    proof -        
+      have measure_B_le: "measure ?M (?B n) \<le> (\<Sum>m. measure ?M (A (m + n)))" for n
+        apply (rule proc_source.finite_measure_subadditive_countably)
+        using A_measurable summable_A by blast+
+      have lim_A: "(\<lambda>n. (\<Sum>m. measure ?M (A (m + n)))) \<longlonglongrightarrow> 0"
+        by (fact suminf_exist_split2[OF \<open>summable (\<lambda>m. measure ?M (A m))\<close>])
+      have "convergent (\<lambda>n. measure ?M (?B n))"
+        apply (intro Bseq_monoseq_convergent BseqI'[where K="measure ?M (\<Union> (range A))"])
+        apply simp
+         apply (meson A_measurable UNIV_I Union_mono image_iff image_subsetI proc_source.finite_measure_mono sets.countable_UN)
+        apply (rule decseq_imp_monoseq)
+        unfolding decseq_def
+        using Union_add_subset proc_source.finite_measure_mono
+        by (metis A_measurable countable_Un_Int(1))
+      then obtain L where lim_B: "(\<lambda>n. measure ?M (?B n)) \<longlonglongrightarrow> L"
+        unfolding convergent_def by auto
+      then have "L \<ge> 0"
+        by (simp add: LIMSEQ_le_const)
+      moreover have "L \<le> 0"
+        using measure_B_le by (simp add: LIMSEQ_le[OF lim_B lim_A])
+      ultimately show ?thesis
+        using lim_B by simp
+    qed
     then have N_null: "?N \<in> null_sets ?M"
-      sorry
-
+    proof -
+      have "(\<lambda>n. measure ?M (?B n)) \<longlonglongrightarrow> measure ?M ?N"
+        apply (rule proc_source.finite_Lim_measure_decseq)
+          using A_measurable apply blast
+          apply (intro monotoneI, simp add: Union_add_subset)
+        done
+      then have "measure ?M ?N = 0"
+        using lim_B LIMSEQ_unique by blast
+      then show ?thesis
+        by (auto simp add: emeasure_eq_ennreal_measure)
+    qed
     {
       fix \<omega> assume \<omega>: "\<omega> \<in> space ?M - ?N"
-      then obtain n\<^sub>0 :: nat where "\<omega> \<notin> (\<Union>n \<in> {n\<^sub>0..}. A n)"
+      then obtain n\<^sub>0 :: nat where n_zero: "\<omega> \<notin> (\<Union>n. A (n + n\<^sub>0))"
         by blast
+      then have omega_notin: "\<And>n. n \<ge> n\<^sub>0 \<Longrightarrow> \<omega> \<notin> A n"
+        by (metis UNIV_I UN_iff add.commute le_Suc_ex)
       then have "norm (X (real_of_int k/2^n) \<omega> - X ((real_of_int k-1)/2^n) \<omega>) < 2 powr (- \<gamma> * n)"
         if "k \<in> {1..\<lfloor>2^n * T\<rfloor>}" "n \<ge> n\<^sub>0" for n k
-        using that sorry
+      proof -
+        have "2 powr (- \<gamma> * real n)
+           > Max {\<bar>process X (real_of_int (k - 1) * 2 powr - real n) \<omega> - process X (real_of_int k * 2 powr - real n) \<omega>\<bar> |k.
+                   k \<in> {1..\<lfloor>2 ^ n * T\<rfloor>}}"
+          using omega_notin[OF that(2)] unfolding A_def apply auto sorry
+        then show ?thesis sorry
+      qed
   
       text \<open> The objective of this block is to show that, for dyadic numbers s t with the same resolution:
      | X t \<omega> - x s \<omega> | \<le> 2 * 2 powr (- \<gamma> * n) / (1 - 2 powr - \<gamma>)
@@ -371,7 +365,7 @@ proof -
       text \<open> We show that for dyadic rationals, X is Holder-continuous \<close>
       let ?C\<^sub>0 = "2 powr (1 + \<gamma>) / (1 - 2 powr - \<gamma>)"
       have "?C\<^sub>0 > 0"
-        by (smt (verit) \<open>\<gamma> > 0\<close> \<open>\<gamma> \<le> 1\<close> less_divide_eq_1_pos powr_eq_one_iff powr_ge_pzero powr_le_cancel_iff)
+        by (smt (verit) \<open>\<gamma> > 0\<close> \<open>\<gamma> < 1\<close> less_divide_eq_1_pos powr_eq_one_iff powr_ge_pzero powr_le_cancel_iff)
       {
         fix s t
         assume s: "s \<in> (\<Union>n. dyadic_interval n 0 T)"
@@ -401,7 +395,7 @@ proof -
       then have holder_dyadic: "\<gamma>-holder_on (\<Union>n. dyadic_interval n 0 T) (\<lambda>t. X t \<omega>)"
         apply (intro holder_onI)
         using \<open>0 < \<gamma>\<close> apply blast
-        using \<open>\<gamma> \<le> 1\<close> apply blast
+        using \<open>\<gamma> < 1\<close> apply argo
         apply (intro exI[where x="?C\<^sub>0 * 2 powr ((1-\<gamma>) * n\<^sub>0)"])
         using \<open>?C\<^sub>0 > 0\<close> apply (auto simp: \<open>?C\<^sub>0 > 0\<close>zero_less_divide_iff)
         done
@@ -422,7 +416,7 @@ proof -
       then have "\<gamma>-holder_on {0..T} X_tilde"
         apply (intro holder_onI)
         using \<open>0 < \<gamma>\<close> apply blast
-        using \<open>\<gamma> \<le> 1\<close> apply blast
+        using \<open>\<gamma> < 1\<close> apply argo
         apply (intro exI[where x="?C\<^sub>0 * 2 powr ((1-\<gamma>) * n\<^sub>0)"])
         using \<open>?C\<^sub>0 > 0\<close> apply (auto simp: \<open>?C\<^sub>0 > 0\<close>zero_less_divide_iff)
         done
@@ -435,8 +429,8 @@ proof -
     have local_holder_X_tilde: "local_holder_on \<gamma> {0..T} (\<lambda>t. X_tilde t \<omega>)" if "\<omega> \<in> space ?M" for \<omega>
     proof (cases "\<omega> \<in> ?N")
       case True
-      then show ?thesis 
-        unfolding X_tilde_def by (simp add: local_holder_const \<open>0 < \<gamma>\<close> \<open>\<gamma> \<le> 1\<close>)
+      then show ?thesis
+        unfolding X_tilde_def using local_holder_const \<open>0 < \<gamma>\<close> \<open>\<gamma> < 1\<close> by fastforce
     next
       case False
       then have 1: "\<omega> \<in> space ?M - ?N"
@@ -478,62 +472,112 @@ proof -
          apply (simp_all add: proc_source.prob_space_axioms real_valued X_tilde_measurable)
       using local_holder_X_tilde unfolding local_holder_on_def by auto
   } note * = this
-  define Mod where "Mod \<equiv> \<lambda>T \<gamma>. SOME Y. modification (restrict_index X {0..T}) Y \<and> 
+  define Mod where "Mod \<equiv> \<lambda>T. SOME Y. modification (restrict_index X {0..T}) Y \<and> 
     (\<forall>x\<in>space (proc_source X). local_holder_on \<gamma> {0..T} (\<lambda>t. Y t x))"
-  have Mod_source[simp]: "\<lbrakk>T > 0; \<gamma> \<in> {0<..<b/a}\<rbrakk> \<Longrightarrow> proc_source (Mod T \<gamma>) = proc_source X" for T \<gamma>
-    unfolding Mod_def using someI * apply simp
-    by (smt (verit, del_insts) compatible_source modificationD(1) restrict_index_source someI)
-  have Mod: "modification (restrict_index X {0..T}) (Mod T \<gamma>) \<and> 
-    (\<forall>x\<in>space (proc_source X). local_holder_on \<gamma> {0..T} (\<lambda>t. (Mod T \<gamma>) t x)) " if "0 < T" "\<gamma> \<in> {0<..<b/a}" for T \<gamma>
-    using someI_ex[OF *[OF that]] unfolding Mod_def by blast
+  have Mod: "modification (restrict_index X {0..T}) (Mod T) \<and>
+    (\<forall>x\<in>space (proc_source X). local_holder_on \<gamma> {0..T} (\<lambda>t. (Mod T) t x)) " if "0 < T" for T
+    using someI_ex[OF *[OF that]] unfolding Mod_def by linarith
+  then have compatible_Mod: "compatible (restrict_index X {0..T}) (Mod T)" if "0 < T" for T
+    using that modificationD(1) by blast
+  then have Mod_source[simp]: "proc_source (Mod T) = proc_source X"  if "0 < T" for T
+    by (metis compatible_source restrict_index_source that)
+  have Mod_target: "sets (proc_target (Mod T)) = sets (proc_target X)"  if "0 < T" for T
+    by (metis compatible_Mod[OF that] compatible_target restrict_index_target)
   {
     fix S T ::real assume ST[simp]: "S > 0" "T > 0"
-    fix \<gamma> :: real assume gamma: "\<gamma> \<in> {0<..<b/a}"
-    have mod_restrict: "modification (restrict_index (Mod S \<gamma>) {0..min S T}) (restrict_index (Mod T \<gamma>) {0..min S T})"
+    have mod_restrict: "modification (restrict_index (Mod S) {0..min S T}) (restrict_index (Mod T) {0..min S T})"
     proof -
-      have "modification (restrict_index X {0..min S T}) (restrict_index (Mod S \<gamma>) {0..min S T})"
-        using restrict_index_override modification_restrict_index Mod[OF ST(1) gamma] by fastforce
-      moreover have "modification (restrict_index X {0..min S T}) (restrict_index (Mod T \<gamma>) {0..min S T})"
-        using restrict_index_override modification_restrict_index Mod[OF ST(2) gamma] by fastforce
+      have "modification (restrict_index X {0..min S T}) (restrict_index (Mod S) {0..min S T})"
+        using restrict_index_override modification_restrict_index Mod[OF ST(1)] by fastforce
+      moreover have "modification (restrict_index X {0..min S T}) (restrict_index (Mod T) {0..min S T})"
+        using restrict_index_override modification_restrict_index Mod[OF ST(2)] by fastforce
       ultimately show ?thesis
         using modification_sym modification_trans by blast
     qed
-    then have *: "indistinguishable (restrict_index (Mod S \<gamma>) {0..min S T}) (restrict_index (Mod T \<gamma>) {0..min S T})"
+    then have *: "indistinguishable (restrict_index (Mod S) {0..min S T}) (restrict_index (Mod T) {0..min S T})"
     proof -
-      have "\<forall>x \<in> space ?M. continuous_on {0..S} (\<lambda>t. (Mod S \<gamma>) t x)"
-        using Mod[OF ST(1) gamma] local_holder_continuous by blast
-      then have 1: "\<forall>x \<in> space ?M. continuous_on {0..min S T} (\<lambda>t. (Mod S \<gamma>) t x)"
+      have "\<forall>x \<in> space ?M. continuous_on {0..S} (\<lambda>t. (Mod S) t x)"
+        using Mod[OF ST(1)] local_holder_continuous by blast
+      then have 1: "\<forall>x \<in> space ?M. continuous_on {0..min S T} (\<lambda>t. (Mod S) t x)"
         using continuous_on_subset by fastforce
-      have "\<forall>x \<in> space ?M. continuous_on {0..T} (\<lambda>t. (Mod T \<gamma>) t x)"
-        using Mod[OF ST(2) gamma] local_holder_continuous by fast
-      then have 2: "\<forall>x \<in> space ?M. continuous_on {0..min S T} (\<lambda>t. (Mod T \<gamma>) t x)"
+      have "\<forall>x \<in> space ?M. continuous_on {0..T} (\<lambda>t. (Mod T) t x)"
+        using Mod[OF ST(2)] local_holder_continuous by fast
+      then have 2: "\<forall>x \<in> space ?M. continuous_on {0..min S T} (\<lambda>t. (Mod T) t x)"
         using continuous_on_subset by fastforce
       show ?thesis
         apply (rule modification_continuous_indistinguishable)
            apply (fact mod_restrict)
-        using ST(1) ST(2) apply (smt (verit, best) restrict_index_index)
-         apply (intro AE_I2, simp)
-        using "1" gamma apply fastforce
-        apply (intro AE_I2, simp)
-        apply (metis "2" ST(2) Mod_source gamma)
+        apply (metis ST(1) ST(2) min_def restrict_index_index)
+         apply (intro AE_I2; simp add: 1 2)+
         done
     qed
   }
   then have "\<And>S T. S > 0 \<Longrightarrow> T > 0 \<Longrightarrow> \<exists>N \<in> null_sets (proc_source X). {\<omega> \<in> space (proc_source X). \<exists>t \<in> {0..min S T}.
-   (restrict_index (Mod S \<gamma>) {0..min S T}) t \<omega> \<noteq> (restrict_index (Mod S \<gamma>) {0..min S T}) t \<omega>} \<subseteq> N" if "\<gamma> \<in> {0<..<b / a}" for \<gamma>
-    using indistinguishable_null_ex that by blast
-  then obtain N where N: "S > 0 \<Longrightarrow> T > 0 \<Longrightarrow> N \<gamma> S T \<in> null_sets (proc_source X) \<and> {\<omega> \<in> space (proc_source X). \<exists>t \<in> {0..min S T}.
-   (restrict_index (Mod S \<gamma>) {0..min S T}) t \<omega> \<noteq> (restrict_index (Mod S \<gamma>) {0..min S T}) t \<omega>} \<subseteq> N \<gamma> S T" if "\<gamma> \<in> {0<..<b / a}" for \<gamma> T S
+   (restrict_index (Mod S) {0..min S T}) t \<omega> \<noteq> (restrict_index (Mod S) {0..min S T}) t \<omega>} \<subseteq> N"
+    using indistinguishable_null_ex gamma by blast
+  then obtain N where N: "S > 0 \<Longrightarrow> T > 0 \<Longrightarrow> N S T \<in> null_sets (proc_source X) \<and> {\<omega> \<in> space (proc_source X). \<exists>t \<in> {0..min S T}.
+   (restrict_index (Mod S) {0..min S T}) t \<omega> \<noteq> (restrict_index (Mod S) {0..min S T}) t \<omega>} \<subseteq> N S T" for T S
     by meson
-  then have "(\<Union>S \<in> \<nat> - {0}. (\<Union> T \<in> \<nat> - {0}. N \<gamma> S T)) \<in> null_sets ?M" if "\<gamma> \<in> {0<..<b / a}" for \<gamma>
+  define N_inf where "N_inf \<equiv> (\<Union>S \<in> \<nat> - {0}. (\<Union> T \<in> \<nat> - {0}. N S T))"
+  from N have "N_inf \<in> null_sets ?M"
+    unfolding N_inf_def
     apply (intro null_sets_UN')
      apply (rule countable_Diff)
       apply (simp add: Nats_def)+
-    using that by force
-  define X_mod where "X_mod \<equiv> (\<lambda>t \<omega>. (Mod \<lceil>t\<rceil> \<gamma>) t \<omega>)"
-  
-  show ?thesis
-    apply (rule exI[where x="process_of ?M (proc_target X) {0..} (X_mod) 0"])
+    by force
+  define X_mod where "X_mod \<equiv> \<lambda>t \<omega>. if \<omega> \<in> space ?M - N_inf then (Mod \<lfloor>t+1\<rfloor>) t \<omega> else 0"
+  have [measurable]: "\<forall>t\<in>{0..}. X_mod t \<in> proc_source X \<rightarrow>\<^sub>M proc_target X"
+  proof (intro ballI)
+    fix t :: real assume "t \<in> {0..}"
+    then have "0 < \<lfloor>t + 1\<rfloor>"
+      by force
+    then show "X_mod t \<in> proc_source X \<rightarrow>\<^sub>M proc_target X"
+      unfolding X_mod_def apply measurable
+        apply (subst measurable_cong_sets[where M'= "proc_source (Mod \<lfloor>t + 1\<rfloor>)" and N' = "proc_target (Mod \<lfloor>t + 1\<rfloor>)"])
+      using Mod_source \<open>0 < \<lfloor>t + 1\<rfloor>\<close> apply presburger
+      using Mod_target \<open>0 < \<lfloor>t + 1\<rfloor>\<close> apply presburger
+        apply (meson random_X)
+       apply (simp add: real_valued)
+      apply (metis \<open>N_inf \<in> null_sets ?M\<close> Int_def null_setsD2 sets.Int_space_eq1 sets.compl_sets)
+      done
+  qed
+  have "modification X (process_of (proc_source X) (proc_target X) {0..} X_mod 0)"
+  proof (intro modificationI ballI)
+    show "compatible X (process_of (proc_source X) (proc_target X) {0..} X_mod 0)"
+      apply (intro compatibleI)
+      unfolding X_mod_def apply (subst source_process_of)
+      unfolding X_mod_def using Mod[THEN conjunct1]
+      sorry
+    fix t assume "t \<in> proc_index X"
+    then have "X t \<omega> = (process_of (proc_source X) (proc_target X) {0..} X_mod 0) t \<omega>"
+      if "\<omega> \<in> space ?M - N_inf" for \<omega>
+      sorry
+    then show "AE x in ?M. X t x = (process_of (proc_source X) (proc_target X) {0..} X_mod 0) t x"
+      apply (intro AE_I[where N="N_inf"])
+      using \<open>N_inf \<in> null_sets ?M\<close> by blast+
+  qed
+
+  text \<open>Because the processes are indistinguishable, they are all equal on \<omega>, so the local holder
+  continuity extends to {0..} . \<close>
+  moreover have "local_holder_on \<gamma> {0..} (\<lambda>t. X_mod t \<omega>)" for \<omega>
+  proof (cases "\<omega> \<in> space ?M - N_inf")
+    case False
+    then show ?thesis
+     apply (simp only: X_mod_def)
+    using local_holder_const \<open>0 < \<gamma>\<close> \<open>\<gamma> < 1\<close> by fastforce
+  next
+    case True
+    then show ?thesis sorry
+  qed
+
+  ultimately show ?thesis
+    apply (intro exI[where x="process_of ?M (proc_target X) {0..} (X_mod) 0"])
+    apply simp
+    apply (intro ballI)
+    apply (subst process_process_of)
+    using \<open>\<forall>t\<in>{0..}. X_mod t \<in> proc_source X \<rightarrow>\<^sub>M proc_target X\<close> apply blast
+    using proc_source.prob_space_axioms apply blast
+     apply (simp add: real_valued)
     sorry
 qed
 
