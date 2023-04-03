@@ -1,5 +1,5 @@
 theory Continuous_Modification
-  imports Stochastic_Process Holder_Continuous Dyadic_Interval
+  imports Stochastic_Process Holder_Continuous Dyadic_Interval "Eisbach_Tools.Apply_Trace_Cmd"
 begin
 
 text \<open> Klenke 5.11: Markov inequality. Compare with @{thm nn_integral_Markov_inequality} \<close>
@@ -23,8 +23,8 @@ proof -
     apply (simp add: nn_integral_cmult_indicator)
     apply (rule mult_left_mono)
      apply (rule emeasure_mono)
-    apply simp_all
-    using e mono_onD[OF mono] apply fastforce
+      apply simp_all
+      using e mono_onD[OF mono] apply auto
     done
   also have "... \<le> \<integral>\<^sup>+x\<in>{x \<in> space M. f \<epsilon> \<le> f (norm (X x))}. f (norm (X x))\<partial>M"
     apply (rule nn_integral_mono)
@@ -79,7 +79,6 @@ theorem holder_continuous_modification:
       and gt_0: "a > 0" "b > 0" "C > 0"
       and "b \<le> a" (* Probably follows from other assms *)
       and gamma: "\<gamma> \<in> {0<..<b/a}"
-      and integrable_X: "\<And>s t. t \<ge> 0 \<Longrightarrow> integrable (proc_source X) (X t)"
       and expectation: "\<And>s t. \<lbrakk>s \<ge> 0; t \<ge> 0\<rbrakk> \<Longrightarrow>
           (\<integral>\<^sup>+ x. dist (X t x) (X s x) powr a \<partial>proc_source X) \<le> C * dist t s powr (1+b)"
     shows "\<exists>Y. modification X Y \<and> (\<forall>x \<in> space (proc_source X). local_holder_on \<gamma> {0..} (\<lambda>t. Y t x))"
@@ -99,7 +98,9 @@ proof -
      \<le> integral\<^sup>N ?M ?inc / \<epsilon> powr a"
       apply (subst dist_norm)+
       apply (rule nn_integral_Markov_inequality')
-      using that(1,2) integrable_X apply measurable
+      using that(1,2) apply measurable
+        apply (metis random_X real_valued)
+        apply (metis random_X real_valued)
       using gt_0(1) that(3) powr_mono2 by (auto intro: mono_onI)
     also have "... \<le> (C * dist t s powr (1 + b)) / ennreal (\<epsilon> powr a)"
       apply (rule divide_right_mono_ennreal)
