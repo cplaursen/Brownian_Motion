@@ -69,13 +69,16 @@ lemma Union_add_subset: "(m :: nat) \<le> n \<Longrightarrow> (\<Union>k. A (k +
   apply (metis add.commute le_iff_add trans_le_add1)
   done
 
+lemma floor_in_Nats: "x \<ge> 0 \<Longrightarrow> \<lfloor>x\<rfloor> \<in> \<nat>"
+  by (metis nat_0_le of_nat_in_Nats zero_le_floor)
+
 text \<open> Klenke 21.6 - Kolmorogov-Chentsov\<close>
 
 text_raw \<open>\DefineSnippet{holder_continuous_modification}{\<close>
 theorem holder_continuous_modification:
   fixes X :: "(real, 'a, 'b :: {polish_space, real_normed_vector}) stochastic_process"
-  assumes index: "proc_index X = {0..}"
-      and real_valued[measurable]: "proc_target X = borel"
+  assumes index[simp]: "proc_index X = {0..}"
+      and target_borel[measurable, simp]: "proc_target X = borel"
       and gt_0: "a > 0" "b > 0" "C > 0"
       and "b \<le> a" (* Probably follows from other assms *)
       and gamma: "\<gamma> \<in> {0<..<b/a}"
@@ -85,10 +88,11 @@ theorem holder_continuous_modification:
 text_raw \<open>}%EndSnippet\<close>
 proof -
   let ?M = "proc_source X"
-
   have "0 < \<gamma>" "\<gamma> < 1"
     using gamma apply simp
     by (metis assms(6) divide_le_eq_1_pos gamma greaterThanLessThan_iff gt_0(1) order_less_le_trans)
+  then have "\<gamma> \<in> {0<..1}"
+    by simp
   text \<open> Consequence of @{thm nn_integral_Markov_inequality'} \<close>
   have markov: "\<P>(x in ?M. \<epsilon> \<le> dist (X t x) (X s x)) \<le> (C * dist t s powr (1 + b)) / \<epsilon> powr a"
     if "s \<ge> 0" "t \<ge> 0" "\<epsilon> > 0" for s t \<epsilon>
@@ -99,8 +103,8 @@ proof -
       apply (subst dist_norm)+
       apply (rule nn_integral_Markov_inequality')
       using that(1,2) apply measurable
-        apply (metis random_X real_valued)
-        apply (metis random_X real_valued)
+        apply (metis random_X target_borel)
+        apply (metis random_X target_borel)
       using gt_0(1) that(3) powr_mono2 by (auto intro: mono_onI)
     also have "... \<le> (C * dist t s powr (1 + b)) / ennreal (\<epsilon> powr a)"
       apply (rule divide_right_mono_ennreal)
@@ -183,7 +187,7 @@ proof -
        apply simp
       apply (simp only: if_False)
         apply measurable
-        apply (metis random_X real_valued)+
+        apply (metis random_X target_borel)+
       done
     have "emeasure ?M (A n) \<le> ennreal (C * T * 2 powr (real_of_int (- int n) * (b - a * \<gamma>)))"
       if [simp]: "2^n * T \<ge> 1" for n
@@ -211,7 +215,7 @@ proof -
       next
         show "?R \<in> sets ?M"
           apply measurable
-          by (smt (verit) real_valued random_X)+
+          by (smt (verit) target_borel random_X)+
       qed
       also have "... \<le> (\<Sum>k\<in>{1..\<lfloor>2^n * T\<rfloor>}. emeasure ?M 
     {x\<in>space ?M. dist (X (real_of_int (k - 1) * 2 powr - real n) x) (X (real_of_int k * 2 powr - real n) x) \<ge> 2 powr (- \<gamma> * real n)})"
@@ -220,7 +224,7 @@ proof -
         apply (subst image_subset_iff)
         apply (intro ballI)
         apply measurable
-         apply (metis random_X real_valued)+
+         apply (metis random_X target_borel)+
         done
       also have "... \<le> C * 2 powr (- n * (1 + b - a * \<gamma>)) * (card {1..\<lfloor>2 ^ n * T\<rfloor>})"
       proof -
@@ -228,10 +232,12 @@ proof -
           fix k assume "k \<in> {1..\<lfloor>2 ^ n * T\<rfloor>}"
           then have "real_of_int k \<ge> 1"
             by presburger
-          have "measure ?M {x \<in> space ?M. 2 powr (- \<gamma> * real n) \<le> dist (X (real_of_int (k - 1) * 2 powr - real n) x) (X (real_of_int k * 2 powr - real n) x)} \<le> C * 2 powr (-(real n) * (1+b-a*\<gamma>))"
-            using incr[OF \<open>\<gamma> > 0\<close> \<open>real_of_int k \<ge> 1\<close>] by simp
+          then have "\<P>(x in ?M. 2 powr (- \<gamma> * real n) \<le> dist (X (real_of_int (k - 1) * 2 powr - real n) x) (X (real_of_int k * 2 powr - real n) x))
+                 \<le> C * 2 powr (-(real n) * (1+b-a*\<gamma>))"
+            using incr[OF \<open>\<gamma> > 0\<close>] by simp
         } note X = this
-        then have "sum (\<lambda>k. measure ?M {x \<in> space ?M. 2 powr (- \<gamma> * real n) \<le> dist (X (real_of_int (k - 1) * 2 powr - real n) x) (X (real_of_int k * 2 powr - real n) x)}) {1..\<lfloor>2 ^ n * T\<rfloor>} \<le> of_nat (card {1..\<lfloor>2 ^ n * T\<rfloor>}) * (C * 2 powr (-(real n) * (1+b-a*\<gamma>)))"
+        then have "sum (\<lambda>k. \<P>(x in ?M. 2 powr (- \<gamma> * real n) \<le> dist (X (real_of_int (k - 1) * 2 powr - real n) x) (X (real_of_int k * 2 powr - real n) x))) 
+                        {1..\<lfloor>2 ^ n * T\<rfloor>} \<le> of_nat (card {1..\<lfloor>2 ^ n * T\<rfloor>}) * (C * 2 powr (-(real n) * (1+b-a*\<gamma>)))"
           by (fact sum_bounded_above)
         then show ?thesis
           apply (subst proc_source.emeasure_eq_measure)
@@ -396,6 +402,7 @@ proof -
         have "dist (X t \<omega>) (X s \<omega>) \<le> 2 * 2 powr (- \<gamma> * n) / (1 - 2 powr - \<gamma>)"
           using X_dyadic_incr sorry
       } note dist_dyadic_fixed = this
+
       text \<open> We show that for dyadic rationals, X is Holder-continuous \<close>
       let ?C\<^sub>0 = "2 powr (1 + \<gamma>) / (1 - 2 powr - \<gamma>)"
       have "?C\<^sub>0 > 0"
@@ -428,8 +435,7 @@ proof -
         using dist_dyadic sorry
       then have holder_dyadic: "\<gamma>-holder_on (\<Union>n. dyadic_interval n 0 T) (\<lambda>t. X t \<omega>)"
         apply (intro holder_onI)
-        using \<open>0 < \<gamma>\<close> apply blast
-        using \<open>\<gamma> < 1\<close> apply argo
+        using \<open>\<gamma> \<in> {0<..1}\<close> apply argo
         apply (intro exI[where x="?C\<^sub>0 * 2 powr ((1-\<gamma>) * n\<^sub>0)"])
         using \<open>?C\<^sub>0 > 0\<close> apply (auto simp: \<open>?C\<^sub>0 > 0\<close>zero_less_divide_iff)
         done
@@ -449,8 +455,7 @@ proof -
         sorry text \<open> Should be analogous to the proof of @{thm dist_dyadic} \<close>
       then have "\<gamma>-holder_on {0..T} X_tilde"
         apply (intro holder_onI)
-        using \<open>0 < \<gamma>\<close> apply blast
-        using \<open>\<gamma> < 1\<close> apply argo
+        using \<open>\<gamma> \<in> {0<..1}\<close> apply argo
         apply (intro exI[where x="?C\<^sub>0 * 2 powr ((1-\<gamma>) * n\<^sub>0)"])
         using \<open>?C\<^sub>0 > 0\<close> apply (auto simp: \<open>?C\<^sub>0 > 0\<close>zero_less_divide_iff)
         done
@@ -489,69 +494,81 @@ proof -
     qed
     moreover have X_tilde_measurable: "X_tilde t \<in> borel_measurable ?M" if "t \<in> {0..T}" for t
       unfolding X_tilde_def apply measurable
-         apply (metis random_X real_valued)
+         apply (metis random_X target_borel)
         defer
       using sets.sets_Collect_const apply blast
        apply auto[1]
       sorry (* Prove limit is measurable *)
-    ultimately have "modification (restrict_index X {0..T}) (process_of (?M) (proc_target X) {0..T} X_tilde 0)"
+    ultimately have "modification (restrict_index X {0..T}) (process_of ?M (proc_target X) {0..T} X_tilde 0)"
       apply (intro modificationI)
       unfolding compatible_def apply safe
-           apply (simp_all add: proc_source.prob_space_axioms real_valued)
+           apply (simp_all add: proc_source.prob_space_axioms)
       by (metis restrict_index_source)
-    then have "\<exists>Y. modification (restrict_index X {0..T}) Y \<and> (\<forall>x \<in> space (?M). local_holder_on \<gamma> {0..T} (\<lambda>t. process Y t x))"
-      apply (intro exI[where x="(process_of (?M) (proc_target X) {0..T} X_tilde 0)"])
+    then have "\<exists>Y. modification (restrict_index X {0..T}) Y \<and> (\<forall>x \<in> space ?M. local_holder_on \<gamma> {0..T} (\<lambda>t. process Y t x))"
+      apply (intro exI[where x="(process_of ?M (proc_target X) {0..T} X_tilde 0)"])
       apply safe
       apply (subst process_process_of)
-         apply (simp_all add: proc_source.prob_space_axioms real_valued X_tilde_measurable)
+         apply (simp_all add: proc_source.prob_space_axioms X_tilde_measurable)
       using local_holder_X_tilde unfolding local_holder_on_def by auto
   } note * = this
   define Mod where "Mod \<equiv> \<lambda>T. SOME Y. modification (restrict_index X {0..T}) Y \<and> 
-    (\<forall>x\<in>space (?M). local_holder_on \<gamma> {0..T} (\<lambda>t. Y t x))"
-  have Mod: "modification (restrict_index X {0..T}) (Mod T) \<and>
-    (\<forall>x\<in>space (?M). local_holder_on \<gamma> {0..T} (\<lambda>t. (Mod T) t x)) " if "0 < T" for T
-    using someI_ex[OF *[OF that]] unfolding Mod_def by linarith
+    (\<forall>x\<in>space ?M. local_holder_on \<gamma> {0..T} (\<lambda>t. Y t x))"
+  have Mod: "modification (restrict_index X {0..T}) (Mod T)"
+    "(\<forall>x\<in>space ?M. local_holder_on \<gamma> {0..T} (\<lambda>t. (Mod T) t x)) " if "0 < T" for T
+    using someI_ex[OF *[OF that]] unfolding Mod_def by linarith+
   then have compatible_Mod: "compatible (restrict_index X {0..T}) (Mod T)" if "0 < T" for T
     using that modificationD(1) by blast
   then have Mod_source[simp]: "proc_source (Mod T) = ?M"  if "0 < T" for T
     by (metis compatible_source restrict_index_source that)
   have Mod_target: "sets (proc_target (Mod T)) = sets (proc_target X)"  if "0 < T" for T
     by (metis compatible_Mod[OF that] compatible_target restrict_index_target)
-  {
-    fix S T ::real assume ST[simp]: "S > 0" "T > 0"
-    have mod_restrict: "modification (restrict_index (Mod S) {0..min S T}) (restrict_index (Mod T) {0..min S T})"
+  have indistinguishable_mod: 
+    "indistinguishable (restrict_index (Mod S) {0..min S T}) (restrict_index (Mod T) {0..min S T})"
+    if "S > 0" "T > 0" for S T
+  proof -
+    have *: "modification (restrict_index (Mod S) {0..min S T}) (restrict_index (Mod T) {0..min S T})"
     proof -
       have "modification (restrict_index X {0..min S T}) (restrict_index (Mod S) {0..min S T})"
-        using restrict_index_override modification_restrict_index Mod[OF ST(1)] by fastforce
+        using restrict_index_override modification_restrict_index Mod[OF that(1)] by fastforce
       moreover have "modification (restrict_index X {0..min S T}) (restrict_index (Mod T) {0..min S T})"
-        using restrict_index_override modification_restrict_index Mod[OF ST(2)] by fastforce
+        using restrict_index_override modification_restrict_index Mod[OF that(2)] by fastforce
       ultimately show ?thesis
         using modification_sym modification_trans by blast
     qed
-    then have *: "indistinguishable (restrict_index (Mod S) {0..min S T}) (restrict_index (Mod T) {0..min S T})"
-    proof -
+    then show ?thesis
+      apply (rule modification_continuous_indistinguishable)
+    proof (goal_cases _ continuous_S continuous_T)
+     show "\<exists>Ta>0. proc_index (restrict_index (Mod S) {0..min S T}) = {0..Ta}"
+        by (metis that min_def restrict_index_index)
+    next
+      case (continuous_S)
       have "\<forall>x \<in> space ?M. continuous_on {0..S} (\<lambda>t. (Mod S) t x)"
-        using Mod[OF ST(1)] local_holder_continuous by blast
-      then have 1: "\<forall>x \<in> space ?M. continuous_on {0..min S T} (\<lambda>t. (Mod S) t x)"
+        using Mod[OF that(1)] local_holder_continuous by blast
+      then have "\<forall>x \<in> space ?M. continuous_on {0..min S T} (\<lambda>t. (Mod S) t x)"
         using continuous_on_subset by fastforce
+      then show ?case
+        by (auto simp: that(1))
+    next
+      case (continuous_T)
       have "\<forall>x \<in> space ?M. continuous_on {0..T} (\<lambda>t. (Mod T) t x)"
-        using Mod[OF ST(2)] local_holder_continuous by fast
+        using Mod[OF that(2)] local_holder_continuous by fast
       then have 2: "\<forall>x \<in> space ?M. continuous_on {0..min S T} (\<lambda>t. (Mod T) t x)"
         using continuous_on_subset by fastforce
-      show ?thesis
-        apply (rule modification_continuous_indistinguishable)
-           apply (fact mod_restrict)
-        apply (metis ST(1) ST(2) min_def restrict_index_index)
-         apply (intro AE_I2; simp add: 1 2)+
-        done
+      then show ?case
+        by (auto simp: that(2))
     qed
-  }
-  then have "\<And>S T. S > 0 \<Longrightarrow> T > 0 \<Longrightarrow> \<exists>N \<in> null_sets (?M). {\<omega> \<in> space (?M). \<exists>t \<in> {0..min S T}.
-   (restrict_index (Mod S) {0..min S T}) t \<omega> \<noteq> (restrict_index (Mod S) {0..min S T}) t \<omega>} \<subseteq> N"
-    using indistinguishable_null_ex gamma by blast
-  then obtain N where N: "S > 0 \<Longrightarrow> T > 0 \<Longrightarrow> N S T \<in> null_sets (?M) \<and> {\<omega> \<in> space (?M). \<exists>t \<in> {0..min S T}.
-   (restrict_index (Mod S) {0..min S T}) t \<omega> \<noteq> (restrict_index (Mod S) {0..min S T}) t \<omega>} \<subseteq> N S T" for T S
-    by meson
+  qed
+  have "\<forall>S > 0. \<forall>T > 0. \<exists>N. N \<in> null_sets ?M \<and> {\<omega> \<in> space ?M. \<exists>t \<in> {0..min S T}.
+   (Mod S) t \<omega> \<noteq> (Mod T) t \<omega>} \<subseteq> N"
+    apply (fold Bex_def)
+    using indistinguishable_mod[THEN indistinguishable_null_ex] by simp
+  then obtain N where N: "N S T \<in> null_sets ?M"
+    "{\<omega> \<in> space ?M. \<exists>t \<in> {0..min S T}. (Mod S) t \<omega> \<noteq> (Mod T) t \<omega>} \<subseteq> N S T" 
+  if "S > 0" "T > 0" for S T
+    apply (simp add: choice_iff' that)
+    apply (erule exE)
+    apply blast
+    done
   define N_inf where "N_inf \<equiv> (\<Union>S \<in> \<nat> - {0}. (\<Union> T \<in> \<nat> - {0}. N S T))"
   from N have "N_inf \<in> null_sets ?M"
     unfolding N_inf_def
@@ -559,8 +576,20 @@ proof -
      apply (rule countable_Diff)
       apply (simp add: Nats_def)+
     by force
+  have Mod_eq_N_inf: "(Mod S) t \<omega> = (Mod T) t \<omega>"
+    if "\<omega> \<in> space ?M - N_inf" "t \<in> {0..min S T}" "S \<in> \<nat> - {0}" "T \<in> \<nat> - {0}" for \<omega> t S T
+  proof -
+    have "\<omega> \<in> space ?M - N S T"
+      using that(1,3,4) unfolding N_inf_def by blast
+    moreover have "S > 0" "T > 0"
+      using that(2,3,4) by auto
+    ultimately have "\<omega> \<in> {\<omega> \<in> space ?M. \<forall>t \<in>{0..min S T}. (Mod S) t \<omega> = (Mod T) t \<omega>}"
+      using N(2) by auto
+    then show ?thesis
+      using that(2) by blast
+  qed
   define X_mod where "X_mod \<equiv> \<lambda>t \<omega>. if \<omega> \<in> space ?M - N_inf then (Mod \<lfloor>t+1\<rfloor>) t \<omega> else 0"
-  have [measurable]: "\<forall>t\<in>{0..}. X_mod t \<in> ?M \<rightarrow>\<^sub>M proc_target X"
+  have Mod_measurable[measurable]: "\<forall>t\<in>{0..}. X_mod t \<in> ?M \<rightarrow>\<^sub>M proc_target X"
   proof (intro ballI)
     fix t :: real assume "t \<in> {0..}"
     then have "0 < \<lfloor>t + 1\<rfloor>"
@@ -571,24 +600,51 @@ proof -
       using Mod_source \<open>0 < \<lfloor>t + 1\<rfloor>\<close> apply presburger
       using Mod_target \<open>0 < \<lfloor>t + 1\<rfloor>\<close> apply presburger
         apply (meson random_X)
-       apply (simp add: real_valued)
+      apply simp
       apply (metis \<open>N_inf \<in> null_sets ?M\<close> Int_def null_setsD2 sets.Int_space_eq1 sets.compl_sets)
       done
   qed
-  have "modification X (process_of (?M) (proc_target X) {0..} X_mod 0)"
+  have "modification X (process_of ?M (proc_target X) {0..} X_mod 0)"
   proof (intro modificationI ballI)
-    show "compatible X (process_of (?M) (proc_target X) {0..} X_mod 0)"
+    show "compatible X (process_of ?M (proc_target X) {0..} X_mod 0)"
       apply (intro compatibleI)
-      unfolding X_mod_def apply (subst source_process_of)
-      unfolding X_mod_def using Mod[THEN conjunct1]
-      sorry
+        apply (subst source_process_of)
+           prefer 5 apply (subst target_process_of)
+      using Mod_measurable proc_source.prob_space_axioms apply auto
+      done
     fix t assume "t \<in> proc_index X"
-    then have "X t \<omega> = (process_of (?M) (proc_target X) {0..} X_mod 0) t \<omega>"
-      if "\<omega> \<in> space ?M - N_inf" for \<omega>
-      sorry
-    then show "AE x in ?M. X t x = (process_of (?M) (proc_target X) {0..} X_mod 0) t x"
-      apply (intro AE_I[where N="N_inf"])
-      using \<open>N_inf \<in> null_sets ?M\<close> by blast+
+    then have "t \<in> {0..}"
+      by simp
+    then have "real_of_int \<lfloor>t\<rfloor> + 1 > 0"
+      by (simp add: add.commute add_pos_nonneg)
+    then have "\<exists>N \<in> null_sets ?M. \<forall>\<omega> \<in> space ?M - N. 
+        X t \<omega> = (process_of ?M (proc_target X) {0..} X_mod 0) t \<omega>"
+    proof -
+      have 1: "(process_of ?M (proc_target X) {0..} X_mod 0) t \<omega> = (Mod (real_of_int \<lfloor>t\<rfloor> + 1)) t \<omega>"
+          if "\<omega> \<in> space ?M - N_inf" for \<omega>
+        apply (subst process_process_of)
+        using Mod_measurable proc_source.prob_space_axioms apply auto
+        unfolding X_mod_def using that apply simp
+        using \<open>t \<in> {0..}\<close> apply simp
+        done
+      have "\<exists>N \<in> null_sets ?M. \<forall>\<omega> \<in> space ?M - N. X t \<omega> = (Mod (real_of_int \<lfloor>t\<rfloor> + 1)) t \<omega>"
+      proof -
+        obtain N where "{x \<in> space ?M. (restrict_index X {0..real_of_int \<lfloor>t\<rfloor> + 1}) t x \<noteq> (Mod (real_of_int \<lfloor>t\<rfloor> + 1)) t x} \<subseteq> N \<and>
+      N \<in> null_sets (proc_source (restrict_index X {0..(real_of_int \<lfloor>t\<rfloor> + 1)}))"
+          using Mod(1)[OF \<open>real_of_int \<lfloor>t\<rfloor> + 1 > 0\<close>, THEN modification_null_set, of t]
+          using \<open>t \<in> {0..}\<close> by auto
+        then show ?thesis
+          by (smt (verit, ccfv_threshold) DiffE mem_Collect_eq restrict_index_process restrict_index_source subset_eq)
+      qed
+      then obtain N where "N \<in> null_sets ?M" "\<forall>\<omega> \<in> space ?M - N. X t \<omega> = (Mod (real_of_int \<lfloor>t\<rfloor> + 1)) t \<omega>"
+        by blast
+      then show ?thesis
+        apply (intro bexI[where x="N \<union> N_inf"])
+         apply (metis "1" DiffE DiffI UnCI)
+        using \<open>N_inf \<in> null_sets ?M\<close> by blast
+    qed
+    then show "AE x in ?M. X t x = (process_of ?M (proc_target X) {0..} X_mod 0) t x"
+      by (smt (verit, del_insts) DiffI eventually_ae_filter mem_Collect_eq subsetI)
   qed
 
   text \<open>Because the processes are indistinguishable, they are all equal on \<omega>, so the local holder
@@ -598,10 +654,70 @@ proof -
     case False
     then show ?thesis
      apply (simp only: X_mod_def)
-    using local_holder_const \<open>0 < \<gamma>\<close> \<open>\<gamma> < 1\<close> by fastforce
+      apply (metis local_holder_const \<open>\<gamma> \<in> {0<..1}\<close>)
+      done
   next
     case True
-    then show ?thesis sorry
+    then have \<omega>: "\<omega> \<in> space ?M" "\<omega> \<notin> N_inf"
+      by simp_all
+    then show ?thesis
+    proof (intro local_holder_ballI[OF \<open>\<gamma> \<in> {0<..1}\<close>] ballI)
+      fix t::real assume "t \<in> {0..}"
+      then have "real_of_int \<lfloor>t\<rfloor> + 1 > 0"
+        using floor_le_iff by force
+      have "t < real_of_int \<lfloor>t\<rfloor> + 1"
+        by simp
+      then have "local_holder_on \<gamma> {0..real_of_int \<lfloor>t\<rfloor> + 1} (\<lambda>s. Mod (real_of_int \<lfloor>t\<rfloor> + 1) s \<omega>)"
+        using Mod(2) \<omega>(1) \<open>real_of_int \<lfloor>t\<rfloor> + 1 > 0\<close> by blast
+      then obtain \<epsilon> C where eC: "\<epsilon> > 0" "C \<ge> 0" "\<And>r s. r \<in> ball t \<epsilon> \<inter> {0..real_of_int \<lfloor>t\<rfloor> + 1} \<Longrightarrow>
+         s \<in> ball t \<epsilon> \<inter> {0..real_of_int \<lfloor>t\<rfloor> + 1} \<Longrightarrow>
+         dist (Mod (real_of_int \<lfloor>t\<rfloor> + 1) r \<omega>) (Mod (real_of_int \<lfloor>t\<rfloor> + 1) s \<omega>) \<le> C * dist r s powr \<gamma>"
+        apply -
+        apply (erule local_holder_onE)
+          apply (rule \<open>\<gamma> \<in> {0<..1}\<close>)
+        using \<open>t \<in> {0..}\<close> \<open>t < real_of_int \<lfloor>t\<rfloor> + 1\<close> apply fastforce
+        apply blast
+        done
+      define \<epsilon>' where "\<epsilon>' = min \<epsilon> (if frac t = 0 then 1/2 else 1 - frac t)"
+      have e': "\<epsilon>' \<le> \<epsilon> \<and> \<epsilon>' > 0 \<and> ball t \<epsilon>' \<inter> {0..} \<subseteq> {0..real_of_int \<lfloor>t\<rfloor> + 1}"
+        unfolding \<epsilon>'_def
+        apply (auto simp: eC(1) dist_real_def frac_lt_1)
+          apply argo
+        apply (simp add: frac_floor)
+        done
+      {
+        fix r s
+        assume r:  "r \<in> ball t \<epsilon>' \<inter> {0..}"
+        assume s:  "s \<in> ball t \<epsilon>' \<inter> {0..}"
+
+        then have rs_ball: "r \<in> ball t \<epsilon> \<inter> {0..real_of_int \<lfloor>t\<rfloor> + 1}" "s \<in> ball t \<epsilon> \<inter> {0..real_of_int \<lfloor>t\<rfloor> + 1}"
+          using e' r s by auto
+        then have "r \<in> {0..min (real_of_int \<lfloor>t\<rfloor> + 1) (real_of_int \<lfloor>r + 1\<rfloor>)}"
+           by auto
+        then have "(Mod (real_of_int \<lfloor>t\<rfloor> + 1)) r \<omega> = X_mod r \<omega>"
+          unfolding X_mod_def apply (simp only: True if_True)
+          apply (intro Mod_eq_N_inf[OF True])
+            apply simp
+          using \<open>t \<in> {0..}\<close> apply auto
+          apply (metis (no_types, opaque_lifting)floor_in_Nats Nats_1 Nats_add Nats_cases of_int_of_nat_eq of_nat_in_Nats, linarith)+
+          done
+        moreover have "(Mod (real_of_int \<lfloor>t\<rfloor> + 1)) s \<omega> = X_mod s \<omega>"
+          unfolding X_mod_def apply (simp only: True if_True)
+          apply (intro Mod_eq_N_inf[OF True])
+          using \<open>s \<in> ball t \<epsilon> \<inter> {0..real_of_int \<lfloor>t\<rfloor> + 1}\<close> apply simp
+            apply simp
+          using \<open>t \<in> {0..}\<close> apply auto
+          apply (metis (no_types, opaque_lifting)floor_in_Nats Nats_1 Nats_add Nats_cases of_int_of_nat_eq of_nat_in_Nats)
+            apply linarith
+           apply (smt (verit) Int_iff Nats_1 Nats_add Nats_altdef1 atLeast_iff mem_Collect_eq s zero_le_floor)
+          apply (metis s Int_iff atLeast_iff linorder_not_le real_of_int_floor_add_one_gt)
+          done
+        ultimately have "dist (X_mod r \<omega>) (X_mod s \<omega>) \<le> C * dist r s powr \<gamma>"
+          using eC(3)[OF rs_ball] by simp
+      }
+      then show "\<exists>\<epsilon>>0. \<exists>C\<ge>0. \<forall>r\<in>ball t \<epsilon> \<inter> {0..}. \<forall>s\<in>ball t \<epsilon> \<inter> {0..}. dist (X_mod r \<omega>) (X_mod s \<omega>) \<le> C * dist r s powr \<gamma>"
+        using e' eC(2) by blast
+    qed
   qed
 
   ultimately show ?thesis
@@ -609,10 +725,10 @@ proof -
     apply simp
     apply (intro ballI)
     apply (subst process_process_of)
-    using \<open>\<forall>t\<in>{0..}. X_mod t \<in> ?M \<rightarrow>\<^sub>M proc_target X\<close> apply blast
+    using \<open>\<forall>t\<in>{0..}. X_mod t \<in> ?M \<rightarrow>\<^sub>M proc_target X\<close> apply simp
     using proc_source.prob_space_axioms apply blast
-     apply (simp add: real_valued)
-    sorry
+     apply simp
+    by (smt (verit) local_holder_on_cong)
 qed
 
 end

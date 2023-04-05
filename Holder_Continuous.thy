@@ -1,27 +1,22 @@
 theory Holder_Continuous
-  imports "HOL-Analysis.Analysis" "Eisbach_Tools.Apply_Trace_Cmd"
+  imports "HOL-Analysis.Analysis"
 begin
 
 text \<open> H{\"o}lder continuity is a weaker version of Lipschitz continuity. \<close>
 
 definition holder_at_within :: "real \<Rightarrow> 'a set \<Rightarrow> 'a \<Rightarrow> ('a :: metric_space \<Rightarrow> 'b :: metric_space) \<Rightarrow> bool" where
-"holder_at_within \<gamma> D r \<phi> \<equiv> \<gamma> > 0 \<and> \<gamma> \<le> 1 \<and> 
+"holder_at_within \<gamma> D r \<phi> \<equiv> \<gamma> \<in> {0<..1} \<and> 
   (\<exists>\<epsilon> > 0. \<exists>C \<ge> 0. \<forall>s \<in> D. dist r s < \<epsilon> \<longrightarrow> dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>)"
 
 definition local_holder_on :: "real \<Rightarrow> 'a :: metric_space set \<Rightarrow> ('a \<Rightarrow> 'b :: metric_space) \<Rightarrow> bool" where
-"local_holder_on \<gamma> D \<phi> \<equiv> \<gamma> > 0 \<and> \<gamma> \<le> 1 \<and>
+"local_holder_on \<gamma> D \<phi> \<equiv> \<gamma> \<in> {0<..1} \<and>
   (\<forall>t\<in>D. \<exists>\<epsilon> > 0. \<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist s t < \<epsilon> \<and> dist r t < \<epsilon> \<longrightarrow> dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
 
-lemma local_holder_onI:
-  assumes "\<gamma> > 0" "\<gamma> \<le> 1" "(\<forall>t\<in>D. \<exists>\<epsilon> > 0. \<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist s t < \<epsilon> \<and> dist r t < \<epsilon> \<longrightarrow> dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
-  shows "local_holder_on \<gamma> D \<phi>"
-  using assms unfolding local_holder_on_def by blast
-
 definition holder_on :: "real \<Rightarrow> 'a :: metric_space set \<Rightarrow> ('a \<Rightarrow> 'b :: metric_space) \<Rightarrow> bool" ("_-holder'_on" 1000) where
-"\<gamma>-holder_on D \<phi> \<longleftrightarrow> \<gamma> > 0 \<and> \<gamma> \<le> 1 \<and> (\<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
+"\<gamma>-holder_on D \<phi> \<longleftrightarrow> \<gamma> \<in> {0<..1} \<and> (\<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
 
 lemma holder_onI:
-  assumes "\<gamma> > 0" "\<gamma> \<le> 1" "\<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>)"
+  assumes "\<gamma> \<in> {0<..1}" "\<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>)"
   shows "\<gamma>-holder_on D \<phi>"
   unfolding holder_on_def using assms by blast
 
@@ -29,7 +24,7 @@ text \<open> We prove various equivalent formulations of local holder continuity
   balls and inequalities. \<close>
 
 lemma local_holder_on_cball:
-  "local_holder_on \<gamma> D \<phi> \<longleftrightarrow> \<gamma> > 0 \<and> \<gamma> \<le> 1 \<and>
+  "local_holder_on \<gamma> D \<phi> \<longleftrightarrow> \<gamma> \<in> {0<..1} \<and>
   (\<forall>t\<in>D. \<exists>\<epsilon> > 0. \<exists>C \<ge> 0. (\<forall>r\<in>cball t \<epsilon> \<inter> D. \<forall>s\<in>cball t \<epsilon> \<inter> D. dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
   (is "?L \<longleftrightarrow> ?R")
 proof
@@ -66,11 +61,11 @@ next
     using * unfolding local_holder_on_def by metis
 qed
 
-corollary local_holder_on_leq_def: "local_holder_on \<gamma> D \<phi> \<longleftrightarrow> \<gamma> > 0 \<and> \<gamma> \<le> 1 \<and>
+corollary local_holder_on_leq_def: "local_holder_on \<gamma> D \<phi> \<longleftrightarrow> \<gamma> \<in> {0<..1} \<and>
   (\<forall>t\<in>D. \<exists>\<epsilon> > 0. \<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist s t \<le> \<epsilon> \<and> dist r t \<le> \<epsilon> \<longrightarrow> dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
   unfolding local_holder_on_cball by (metis dist_commute Int_iff mem_cball)
 
-corollary local_holder_on_ball: "local_holder_on \<gamma> D \<phi> \<longleftrightarrow> \<gamma> > 0 \<and> \<gamma> \<le> 1 \<and>
+corollary local_holder_on_ball: "local_holder_on \<gamma> D \<phi> \<longleftrightarrow> \<gamma> \<in> {0<..1} \<and>
   (\<forall>t\<in>D. \<exists>\<epsilon> > 0. \<exists>C \<ge> 0. (\<forall>r\<in>ball t \<epsilon> \<inter> D. \<forall>s\<in>ball t \<epsilon> \<inter> D. dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
   unfolding local_holder_on_def by (metis dist_commute Int_iff mem_ball)
 
@@ -78,6 +73,31 @@ lemma local_holder_on_altdef:
   assumes "D \<noteq> {}"
   shows "local_holder_on \<gamma> D \<phi> = (\<forall>t \<in> D. (\<exists>\<epsilon> > 0. (\<gamma>-holder_on ((cball t \<epsilon>) \<inter> D) \<phi>)))"
   unfolding local_holder_on_cball holder_on_def using assms by blast
+
+lemma local_holder_on_cong[cong]:
+  assumes "\<gamma> = \<epsilon>" "C = D" "\<And>x. x \<in> C \<Longrightarrow> \<phi> x = \<psi> x"
+  shows "local_holder_on \<gamma> C \<phi> \<longleftrightarrow> local_holder_on \<epsilon> D \<psi>"
+  unfolding local_holder_on_def using assms by presburger
+
+lemma local_holder_onI:
+  assumes "\<gamma> \<in> {0<..1}" "(\<forall>t\<in>D. \<exists>\<epsilon> > 0. \<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist s t < \<epsilon> \<and> dist r t < \<epsilon> \<longrightarrow> dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
+  shows "local_holder_on \<gamma> D \<phi>"
+  using assms unfolding local_holder_on_def by blast
+
+lemma local_holder_ballI:
+  assumes "\<gamma> \<in> {0<..1}"
+    and "\<And>t. t \<in> D \<Longrightarrow> \<exists>\<epsilon> > 0. \<exists>C \<ge> 0. \<forall>r\<in>ball t \<epsilon> \<inter> D. \<forall>s\<in>ball t \<epsilon> \<inter> D. 
+                dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>"
+  shows "local_holder_on \<gamma> D \<phi>"
+  using assms unfolding local_holder_on_ball by blast
+
+lemma local_holder_onE:
+  assumes local_holder: "local_holder_on \<gamma> D \<phi>"
+      and gamma: "\<gamma> \<in> {0<..1}"
+      and "t \<in> D"
+    obtains \<epsilon> C where "\<epsilon> > 0" "C \<ge> 0" 
+      "\<And>r s. r \<in> ball t \<epsilon> \<inter> D \<Longrightarrow> s \<in> ball t \<epsilon> \<inter> D \<Longrightarrow> dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>"
+  using assms unfolding local_holder_on_ball by auto
 
 text \<open> Holder continuity matches up with the existing definitions in @{theory "HOL-Analysis.Lipschitz"}\<close>
 
@@ -167,7 +187,7 @@ proof -
     unfolding local_holder_on_leq_def using assms by force
 qed
 
-lemma holder_uniform_continuous: 
+lemma holder_uniform_continuous:
   assumes "\<gamma>-holder_on X \<phi>"
   shows "uniformly_continuous_on X \<phi>"
   unfolding uniformly_continuous_on_def
@@ -184,11 +204,11 @@ proof safe
     then have holder_neq_0: "dist (\<phi> r) (\<phi> s) < (C + 1) * dist r s powr \<gamma>" if "dist (\<phi> r) (\<phi> s) > 0"
       using C(2) that
       by (smt (verit, ccfv_SIG) \<open>r \<in> X\<close> \<open>s \<in> X\<close> dist_eq_0_iff mult_le_cancel_right powr_gt_zero)
-    have gamma: "\<gamma> > 0" "\<gamma> \<le> 1"
+    have gamma: "\<gamma> \<in> {0<..1}"
       using assms holder_on_def by blast+
     assume "dist r s < (e/C) powr (1 / \<gamma>)"
     then have "C * dist r s powr \<gamma> < C * ((e/C) powr (1 / \<gamma>)) powr \<gamma>" if "dist (\<phi> r) (\<phi> s) > 0"
-      using holder_neq_0 C(1) \<open>0 < \<gamma>\<close>  powr_less_mono2 by force
+      using holder_neq_0 C(1) powr_less_mono2 gamma by force
     also have "... = e"
       using C(1) gamma \<open>0 < e\<close> powr_powr by auto
     finally have "dist (\<phi> r) (\<phi> s) < e"
@@ -236,7 +256,7 @@ lemma local_holder_compact_imp_holder:
   assumes "compact I" "local_holder_on \<gamma> I \<phi>"
   shows "\<gamma>-holder_on I \<phi>"
 proof -
-  have *: "\<gamma> > 0 \<and> \<gamma> \<le> 1" "(\<forall>t\<in>I. \<exists>\<epsilon>. \<exists>C. \<epsilon> > 0 \<and> C \<ge> 0 \<and> 
+  have *: "\<gamma> \<in> {0<..1}" "(\<forall>t\<in>I. \<exists>\<epsilon>. \<exists>C. \<epsilon> > 0 \<and> C \<ge> 0 \<and> 
     (\<forall>r \<in> ball t \<epsilon> \<inter> I. \<forall>s \<in> ball t \<epsilon> \<inter> I. dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
     using assms(2) unfolding local_holder_on_ball by simp_all
   obtain \<epsilon> C where eC: "t \<in> I \<Longrightarrow> \<epsilon> t > 0 \<and> C t \<ge> 0 \<and> (\<forall>r \<in> ball t (\<epsilon> t) \<inter> I. \<forall>s \<in> ball t (\<epsilon> t) \<inter> I. dist (\<phi> r) (\<phi> s) \<le> C t * dist r s powr \<gamma>)" for t
@@ -317,10 +337,10 @@ proof -
                     dual_order.trans l max.cobounded2 powr_0 powr_gt_zero)
 qed
 
-lemma holder_const: "\<gamma>-holder_on C (\<lambda>_. c) \<longleftrightarrow> \<gamma> > 0 \<and> \<gamma> \<le> 1"
+lemma holder_const: "\<gamma>-holder_on C (\<lambda>_. c) \<longleftrightarrow> \<gamma> \<in> {0<..1}"
   unfolding holder_on_def by auto
 
-lemma local_holder_const: "local_holder_on \<gamma> C (\<lambda>_. c) \<longleftrightarrow> \<gamma> > 0 \<and> \<gamma> \<le> 1"
+lemma local_holder_const: "local_holder_on \<gamma> C (\<lambda>_. c) \<longleftrightarrow> \<gamma> \<in> {0<..1}"
   using holder_const holder_implies_local_holder local_holder_on_def by blast
 
 end
