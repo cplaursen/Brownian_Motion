@@ -296,102 +296,93 @@ proof -
   have f_snd_measurable[measurable]: "(\<lambda>\<omega>\<^sub>2. f (\<omega>\<^sub>1, \<omega>\<^sub>2)) \<in> borel_measurable (kernel_target K)"
     if "\<omega>\<^sub>1 \<in> space (kernel_source K)" for \<omega>\<^sub>1
     using that by measurable
-  {
-    fix A\<^sub>1 A\<^sub>2
-    assume *: "A\<^sub>1 \<in> ?A\<^sub>1" "A\<^sub>2 \<in> ?A\<^sub>2"
-    then have "I (indicator (A\<^sub>1 \<times> A\<^sub>2)) = (\<lambda>\<omega>\<^sub>1. indicator A\<^sub>1 \<omega>\<^sub>1 * kernel K \<omega>\<^sub>1 A\<^sub>2)"
+  have I_pair_measurable[measurable]: "I (indicator (X \<times> Y)) \<in> borel_measurable (kernel_source K)"
+    if "X \<in> sets (kernel_source K)" "Y \<in> sets (kernel_target K)" for X Y
+  proof -
+    have "I (indicator (X \<times> Y)) = (\<lambda>\<omega>\<^sub>1. indicator X \<omega>\<^sub>1 * kernel K \<omega>\<^sub>1 Y)"
       unfolding I_def apply (subst nn_integral_eq_simple_integral)
-      by (transfer, auto simp: indicator_times kernel_measure_emeasure)
+      using that by (transfer, auto simp: indicator_times kernel_measure_emeasure)
     also have "... \<in> borel_measurable (kernel_source K)"
-      using * by measurable
-    finally have "I (indicator (A\<^sub>1 \<times> A\<^sub>2)) \<in> borel_measurable (kernel_source K)" .
-  } note I_indicator_prod_measurable [measurable] = this
-  define D where "D \<equiv> {A \<in> sets (kernel_source K \<Otimes>\<^sub>M kernel_target K). I (indicator A) \<in> borel_measurable (kernel_source K)}"
-  have Dynkin_D: "Dynkin_system (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2) D"
-  proof
-    show D_subset: "D \<subseteq> Pow (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2)"
-      using sets.sets_into_space space_pair_measure D_def by fastforce
-    show "(?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2) \<in> D"
-      unfolding D_def by measurable
-    {
-      fix A assume A: "A \<in> D"
-      then have "I (indicator A) \<in> borel_measurable (kernel_source K)"
-                "I (indicator (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2)) \<in> borel_measurable (kernel_source K)"
-        unfolding D_def by simp_all
-      then have "(\<lambda>\<omega>\<^sub>1. I (indicator (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2)) \<omega>\<^sub>1 - I (indicator A) \<omega>\<^sub>1) \<in> borel_measurable (kernel_source K)"
-        by measurable
-      moreover have "\<And>\<omega>\<^sub>1. \<omega>\<^sub>1 \<in> ?\<Omega>\<^sub>1 \<Longrightarrow> I (indicator ((?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2) - A)) \<omega>\<^sub>1 =
-         I (indicator (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2)) \<omega>\<^sub>1 - I (indicator A) \<omega>\<^sub>1"
+      using that by measurable
+    finally show ?thesis .
+  qed
+  let ?G = "{a \<times> b | a b. a \<in> sets (kernel_source K) \<and> b \<in> sets (kernel_target K)}"
+  have sigma_G: "sigma_sets (space (kernel_source K \<Otimes>\<^sub>M kernel_target K)) ?G =
+                 sets (kernel_source K \<Otimes>\<^sub>M kernel_target K)"
+    by (simp add: sets_pair_measure space_pair_measure)
+  have "Int_stable ?G"
+    using Int_stable_pair_measure_generator by blast
+  moreover have "?G \<subseteq> Pow (space (kernel_source K \<Otimes>\<^sub>M kernel_target K))"
+    by (simp add: pair_measure_closed space_pair_measure)
+  ultimately have [measurable]: "I (indicator A) \<in> borel_measurable (kernel_source K)"
+    if \<open>A \<in> sigma_sets (space (kernel_source K \<Otimes>\<^sub>M kernel_target K)) ?G\<close> for A
+  using that
+  proof (induction rule: sigma_sets_induct_disjoint)
+    case (basic A)
+    then obtain X Y where XY: "X \<in> ?A\<^sub>1" "Y \<in> ?A\<^sub>2" "A = X \<times> Y"
+      by blast
+    show ?case
+      using XY(1,2) by (subst XY(3), measurable) 
+  next
+    case empty
+    then show ?case
+       unfolding I_def by force
+  next
+    case (compl A)
+    then have [measurable]: "A \<in> sets (kernel_source K \<Otimes>\<^sub>M kernel_target K)"
+      using sigma_G by blast
+    from compl have "(\<lambda>\<omega>\<^sub>1. I (indicator (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2)) \<omega>\<^sub>1 - I (indicator A) \<omega>\<^sub>1) \<in> borel_measurable (kernel_source K)"
+      by measurable
+    moreover have "\<And>\<omega>\<^sub>1. \<omega>\<^sub>1 \<in> ?\<Omega>\<^sub>1 \<Longrightarrow> I (indicator ((?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2) - A)) \<omega>\<^sub>1 =
+       I (indicator (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2)) \<omega>\<^sub>1 - I (indicator A) \<omega>\<^sub>1"
+    proof -
+      fix \<omega>\<^sub>1 assume \<omega>\<^sub>1: "\<omega>\<^sub>1 \<in> ?\<Omega>\<^sub>1"
+      then have finite_integral: "(\<integral>\<^sup>+ x. indicator A (\<omega>\<^sub>1, x) \<partial>kernel_measure K \<omega>\<^sub>1) < \<infinity>"
       proof -
-        fix \<omega>\<^sub>1 assume \<omega>\<^sub>1: "\<omega>\<^sub>1 \<in> ?\<Omega>\<^sub>1"
-        then have finite_integral: "(\<integral>\<^sup>+ x. indicator A (\<omega>\<^sub>1, x) \<partial>kernel_measure K \<omega>\<^sub>1) < \<infinity>"
-        proof -
-          have "integral\<^sup>N (kernel_measure K \<omega>\<^sub>1) (\<lambda>x. indicator A (\<omega>\<^sub>1, x)) \<le> integral\<^sup>N (kernel_measure K \<omega>\<^sub>1) (indicator ?\<Omega>\<^sub>2)"
-            apply (rule nn_integral_mono)
-            by (simp add: indicator_def)
-          also have "... < \<infinity>"
-            apply auto
-            by (meson \<omega>\<^sub>1 finite_K finite_kernel.finite_measures finite_measure.emeasure_finite top.not_eq_extremum)
-          finally show ?thesis .
-        qed
-        have "I (indicator ((?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2) - A)) \<omega>\<^sub>1 = \<integral>\<^sup>+\<omega>\<^sub>2. (indicator ((?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2) - A))(\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1"
-          unfolding I_def ..
-        also have "... =  \<integral>\<^sup>+\<omega>\<^sub>2. indicator (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2)(\<omega>\<^sub>1, \<omega>\<^sub>2) - indicator A (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1"
-          by (smt (verit, del_insts) Diff_iff ennreal_0 ennreal_1 ennreal_minus_if indicator_simps nn_integral_cong)
-        also have "... = (\<integral>\<^sup>+\<omega>\<^sub>2. indicator (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2)(\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1) 
-                          - (\<integral>\<^sup>+\<omega>\<^sub>2. indicator A (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1)"
-          apply (rule nn_integral_diff)
-          using \<omega>\<^sub>1 apply measurable
-             apply (simp add: measurable_ident_sets)
-          using \<omega>\<^sub>1 A apply (measurable, auto)
-           unfolding pred_def apply (auto simp add: D_def)[1]
-           using finite_integral by auto
-        finally show "I (indicator ((?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2) - A)) \<omega>\<^sub>1 = I (indicator (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2)) \<omega>\<^sub>1 - I (indicator A) \<omega>\<^sub>1"
-          unfolding I_def .
+        have "integral\<^sup>N (kernel_measure K \<omega>\<^sub>1) (\<lambda>x. indicator A (\<omega>\<^sub>1, x)) \<le> integral\<^sup>N (kernel_measure K \<omega>\<^sub>1) (indicator ?\<Omega>\<^sub>2)"
+          apply (rule nn_integral_mono)
+          by (simp add: indicator_def)
+        also have "... < \<infinity>"
+          apply auto
+          by (meson \<omega>\<^sub>1 finite_K finite_kernel.finite_measures finite_measure.emeasure_finite top.not_eq_extremum)
+        finally show ?thesis .
       qed
-      ultimately have "I (indicator ((?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2) - A)) \<in> borel_measurable (kernel_source K)"
-        by (subst measurable_cong, auto)
-    }
-    then show "\<And>A. A \<in> D \<Longrightarrow> ?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2 - A \<in> D"
-      unfolding D_def by blast
-    show "\<And>A :: nat \<Rightarrow> ('a \<times> 'b) set. disjoint_family A \<Longrightarrow> range A \<subseteq> D \<Longrightarrow> \<Union> (range A) \<in> D"
-    proof (auto simp: D_def)
-      fix A :: "nat \<Rightarrow> ('a \<times> 'b) set" assume *: "disjoint_family A" 
-        "range A \<subseteq> {A \<in> sets (kernel_source K \<Otimes>\<^sub>M kernel_target K). I (indicator A) \<in> borel_measurable (kernel_source K)}"
-      then have "A i \<in> sets (kernel_source K \<Otimes>\<^sub>M kernel_target K)" for i
-        by blast
-      then have [measurable]: "indicator (A i) \<in> borel_measurable (kernel_source K \<Otimes>\<^sub>M kernel_target K)" for i
-        using borel_measurable_indicator by blast
+      have "I (indicator ((?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2) - A)) \<omega>\<^sub>1 = \<integral>\<^sup>+\<omega>\<^sub>2. (indicator ((?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2) - A))(\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1"
+        unfolding I_def ..
+      also have "... =  \<integral>\<^sup>+\<omega>\<^sub>2. indicator (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2)(\<omega>\<^sub>1, \<omega>\<^sub>2) - indicator A (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1"
+        by (smt (verit, del_insts) Diff_iff ennreal_0 ennreal_1 ennreal_minus_if indicator_simps nn_integral_cong)
+      also have "... = (\<integral>\<^sup>+\<omega>\<^sub>2. indicator (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2)(\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1) 
+                        - (\<integral>\<^sup>+\<omega>\<^sub>2. indicator A (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1)"
+        apply (rule nn_integral_diff)
+        using \<omega>\<^sub>1 apply measurable
+           apply (simp add: measurable_ident_sets)
+        using \<omega>\<^sub>1 kernel_measure_sets apply measurable
+        using finite_integral apply simp
+        using \<omega>\<^sub>1 by fastforce
+      finally show "I (indicator ((?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2) - A)) \<omega>\<^sub>1 = I (indicator (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2)) \<omega>\<^sub>1 - I (indicator A) \<omega>\<^sub>1"
+        unfolding I_def .
+    qed
+    ultimately show ?case
+      by (subst measurable_cong, auto simp: space_pair_measure)
+  next
+    case (union A)
+    then have "A i \<in> sets (kernel_source K \<Otimes>\<^sub>M kernel_target K)" for i
+      by (simp add: sigma_G)
+    then have [measurable]: "indicator (A i) \<in> borel_measurable (kernel_source K \<Otimes>\<^sub>M kernel_target K)" for i
+      using borel_measurable_indicator by blast
       have "\<And>\<omega>\<^sub>1. \<omega>\<^sub>1 \<in> ?\<Omega>\<^sub>1 \<Longrightarrow> I (indicator (\<Union> (range A))) \<omega>\<^sub>1 = (\<Sum>n. I (indicator (A n)) \<omega>\<^sub>1)"
         unfolding I_def
         apply (subst suminf_indicator[THEN sym])
-        using * apply auto
+        using union apply auto
         apply (rule nn_integral_suminf)
         apply (subst measurable_kernel_measure)
         by measurable
-      moreover have "(\<lambda>\<omega>\<^sub>1. \<Sum>n. I (indicator (A n)) \<omega>\<^sub>1) \<in> borel_measurable (kernel_source K)"
-        apply measurable
-        using *(2) by blast
-      ultimately show "I (indicator (\<Union> (range A))) \<in> borel_measurable (kernel_source K)"
-        using measurable_cong by force
-    qed
+    moreover have "(\<lambda>\<omega>\<^sub>1. \<Sum>n. I (indicator (A n)) \<omega>\<^sub>1) \<in> borel_measurable (kernel_source K)"
+      apply measurable
+      using union by blast
+    ultimately show "I (indicator (\<Union> (range A))) \<in> borel_measurable (kernel_source K)"
+      using measurable_cong by force
   qed
-
-  moreover have "{a \<times> b | a b. a \<in> sets (kernel_source K) \<and> b \<in> sets (kernel_target K)} \<subseteq> D"
-    using D_def by auto
-  moreover have "Int_stable {a \<times> b | a b. a \<in> sets (kernel_source K) \<and> b \<in> sets (kernel_target K)}"
-    using Int_stable_pair_measure_generator by blast
-  ultimately have "sigma_sets (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2) {a \<times> b | a b. a \<in> sets (kernel_source K) \<and> b \<in> sets (kernel_target K)} = Dynkin (?\<Omega>\<^sub>1 \<times> ?\<Omega>\<^sub>2) D"
-    apply (subst sigma_eq_Dynkin)
-      apply (metis pair_measure_closed)
-     apply blast
-    apply auto
-     apply (metis (no_types, lifting) Dynkin_system.Dynkin_idem Dynkin_system.Dynkin_subset in_mono)
-    by (smt (verit) Collect_cong D_def Dynkin_system.Dynkin_idem Sigma_cong mem_Collect_eq pair_measure_closed sets_pair_measure sigma_eq_Dynkin)
-  then have "sets (kernel_source K \<Otimes>\<^sub>M kernel_target K) = D"
-    by (smt (verit) Collect_cong Dynkin_system.Dynkin_idem Sigma_cong Dynkin_D sets_pair_measure)
-  then have [measurable]: "\<And>A. A \<in> sets (kernel_source K \<Otimes>\<^sub>M kernel_target K) \<Longrightarrow> I (indicator A) \<in> borel_measurable (kernel_source K)"
-    unfolding D_def by blast
   then have simple_I_measurable [measurable]:
     "\<And>g. simple_function (kernel_source K \<Otimes>\<^sub>M kernel_target K) g \<Longrightarrow> I g \<in> borel_measurable (kernel_source K)"
   proof -
@@ -426,7 +417,7 @@ proof -
         .
     } note indicator_repr = this
     have "(\<lambda>\<omega>\<^sub>1. (\<Sum>y \<in> g ` space ?M. y * I (indicator (g -` {y} \<inter> space ?M)) \<omega>\<^sub>1)) \<in> borel_measurable (kernel_source K)"
-      using * by measurable
+      using * by (measurable, simp add: sigma_G)
     then show "I g \<in> borel_measurable (kernel_source K)"
       by (metis (no_types, lifting) measurable_cong indicator_repr)
   qed
