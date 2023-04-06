@@ -46,11 +46,11 @@ corollary kernel_comp_kernel:
   subgoal for \<omega> A'
     apply (cases "\<omega> \<in> space (kernel_source K\<^sub>1) \<and> A' \<in> sets (kernel_target K\<^sub>2)")
     unfolding kernel_comp_def using kernel_comp_wf[OF assms] apply simp
-    apply auto
-    apply (metis emeasure_null_measure kernel_measure_emeasure kernel_not_space_zero measure_eqI nn_integral_null_measure sets_null_measure)
+    apply (auto simp add: kernel_measure_notin_space )
+    apply (fold null_measure_def)
+    apply (rule nn_integral_null_measure)
     done
   done
-
 
 lemma kernel_comp_substochastic:
   assumes "sets (kernel_source K\<^sub>2) = sets (kernel_target K\<^sub>1)" "substochastic_kernel K\<^sub>1" "substochastic_kernel K\<^sub>2"
@@ -91,13 +91,21 @@ theorem kernel_comp_prod:
   fixes K\<^sub>1 :: "('a, 'b) kernel" and K\<^sub>2 :: "('b, 'c) kernel"
   assumes substochastic: "substochastic_kernel K\<^sub>1" "substochastic_kernel K\<^sub>2"
   and "A\<^sub>2 \<in> sets (kernel_target K\<^sub>2)" "sets (kernel_source K\<^sub>2) = sets (kernel_target K\<^sub>1)"
-  shows "kernel (K\<^sub>1 \<circ>\<^sub>K K\<^sub>2) \<omega>\<^sub>0 A\<^sub>2 = kernel (K\<^sub>1 \<Otimes>\<^sub>P K\<^sub>2) \<omega>\<^sub>0 (snd -` A\<^sub>2)"
-  unfolding kernel_product_partial_def
+ (* Could remove the A\<^sub>2 \<in> sets assumption since they both go to 0 otherwise *)
+  shows "kernel (K\<^sub>1 \<circ>\<^sub>K K\<^sub>2) \<omega>\<^sub>0 A\<^sub>2 = kernel (K\<^sub>1 \<Otimes>\<^sub>P K\<^sub>2) \<omega>\<^sub>0 (space (kernel_target K\<^sub>1) \<times> A\<^sub>2)"
   apply (cases "\<omega>\<^sub>0 \<in> space (kernel_source K\<^sub>1)")
-   defer apply (simp add: kernel_product_partial_def)
-  sorry
-
-find_theorems measurable emeasure
+  apply (subst kernel_comp_kernel)
+  using assms apply blast
+  using substochastic substochastic_kernel.axioms(1) apply auto[1]
+  apply (subst kernel_prod_partial_apply)
+       prefer 6
+       apply (subst indicator_times)
+       apply auto
+       apply (smt (verit, ccfv_SIG) assms(3) indicator_simps(1) kernel_measure_emeasure
+          kernel_measure_sets kernel_measure_space mult.right_neutral mult_commute_abs 
+          nn_integral_cmult_indicator nn_integral_cong)
+  using assms substochastic_kernel.axioms(1) apply blast+
+  done
 
 text \<open> Lemma 14.30 \<close>
 lemma kernel_comp_convolution:
@@ -112,7 +120,7 @@ proof -
     by (metis that emeasure_transition_kernel kernel_apply_kernel_of)
   have K1_measure: "kernel_measure K\<^sub>1 \<omega> = M"
     unfolding kernel_measure_def K\<^sub>1_def apply auto
-    by (metis K1 K\<^sub>1_def assms(3) kernel_measure_def kernel_measure_emeasure measure_eqI sets.sets_measure_of_eq target_kernel_of)
+    by (smt (verit, del_insts) K1 K\<^sub>1_def assms(3) kernel.transition_kernel_axioms kernel_measure.rep_eq kernel_measure_kernel_of measure_of_of_measure source_kernel_of target_kernel_of transition_kernel_cong)
   have K2: "kernel K\<^sub>2 x A' = ((return M x) \<star> N) A'" if "x \<in> space M" for A' x
     unfolding K\<^sub>2_def
     apply (cases "A' \<in> sets M")

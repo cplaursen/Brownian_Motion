@@ -438,7 +438,8 @@ proof (rule substochastic_kernelI)
   fix \<omega> assume *: "\<omega> \<in> space (kernel_source (K_1 \<Otimes>\<^sub>K K_2))"
   have "finite_kernel K_1" "finite_kernel K_2"
     using assms substochastic_kernel.axioms(1) by blast+
-  then have "(K_1 \<Otimes>\<^sub>K K_2) \<omega> (space (kernel_target (K_1 \<Otimes>\<^sub>K K_2))) \<le> \<integral>\<^sup>+ \<omega>\<^sub>1. emeasure (kernel_measure K_2 (\<omega>, \<omega>\<^sub>1)) (space (kernel_target K_2)) \<partial>kernel_measure K_1 \<omega>"
+  then have "(K_1 \<Otimes>\<^sub>K K_2) \<omega> (space (kernel_target (K_1 \<Otimes>\<^sub>K K_2))) \<le>
+   \<integral>\<^sup>+ \<omega>\<^sub>1. emeasure (kernel_measure K_2 (\<omega>, \<omega>\<^sub>1)) (space (kernel_target K_2)) \<partial>kernel_measure K_1 \<omega>"
     apply (subst kernel_prod_apply)
     using * apply (simp_all add: assms)
     apply (simp add: space_pair_measure indicator_times)
@@ -448,12 +449,14 @@ proof (rule substochastic_kernelI)
     by simp
   also have "... \<le>  \<integral>\<^sup>+ \<omega>\<^sub>1. 1 \<partial>kernel_measure K_1 \<omega>"
     apply (rule nn_integral_mono)
-    using substochastic
-    by (metis kernel_measure_emeasure kernel_not_space_zero linordered_nonzero_semiring_class.zero_le_one subprob_space.subprob_emeasure_le_1 substochastic_kernel.subprob_measures)
+    by (metis substochastic(2) kernel_measure_emeasure kernel_not_space_zero
+        linordered_nonzero_semiring_class.zero_le_one subprob_space.subprob_emeasure_le_1 
+        substochastic_kernel.subprob_measures)
   also have "... \<le> 1"
     apply simp
     using substochastic
-    by (metis * kernel_product_source subprob_space.subprob_emeasure_le_1 substochastic_kernel.subprob_measures)
+    by (metis * kernel_product_source subprob_space.subprob_emeasure_le_1 
+        substochastic_kernel.subprob_measures)
   finally show "subprob_space (kernel_measure (K_1 \<Otimes>\<^sub>K K_2) \<omega>)"
     by (auto intro: subprob_spaceI simp: kernel_measure_emeasure nonempty)
 qed
@@ -559,7 +562,7 @@ using f proof induct
     using cong(4) by argo
 next
   case (set A)
-  then show ?case
+  then show ?case (* Many trivial goals: clean this up *)
     apply (subst nn_integral_indicator)
     using sets_kernel_semidirect_product apply blast
     unfolding kernel_semidirect_product_def 
