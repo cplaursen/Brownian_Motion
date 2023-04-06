@@ -494,41 +494,206 @@ lemma semidirect_product_unique:
     done
   done
 
-definition kernel_semidirect_product :: "'a measure \<Rightarrow> ('a, 'b) kernel \<Rightarrow> ('a \<times> 'b) measure" (infixr "(\<otimes>\<^sub>S)" 70)
-  where "M \<otimes>\<^sub>S K = kernel_measure (emeasure_kernel M M \<Otimes>\<^sub>P K) (SOME \<omega>. \<omega> \<in> space (kernel_source K))"
+definition kernel_semidirect_product :: "'a measure \<Rightarrow> ('a, 'b) kernel \<Rightarrow> ('a \<times> 'b) measure" (infixr "(\<Otimes>\<^sub>S)" 70)
+  where "M \<Otimes>\<^sub>S K = kernel_measure (emeasure_kernel M M \<Otimes>\<^sub>P K) (SOME \<omega>. \<omega> \<in> space (kernel_source K))"
 
-lemma space_kernel_semidirect_product[simp]: "space (M \<otimes>\<^sub>S K) = (space M \<times> space (kernel_target K))"
+lemma space_kernel_semidirect_product[simp]: "space (M \<Otimes>\<^sub>S K) = (space M \<times> space (kernel_target K))"
   unfolding kernel_semidirect_product_def by (simp add: space_pair_measure)
 
-lemma sets_kernel_semidirect_product: "sets (M \<otimes>\<^sub>S K) = sets (M \<Otimes>\<^sub>M (kernel_target K))"
+lemma sets_kernel_semidirect_product[measurable]: "sets (M \<Otimes>\<^sub>S K) = sets (M \<Otimes>\<^sub>M (kernel_target K))"
   unfolding kernel_semidirect_product_def 
   by (simp add: kernel_product_partial_def)
 
+lemma kernel_semidirect_product_measurable[measurable]: 
+  "f \<in> M \<Otimes>\<^sub>M (kernel_target K) \<rightarrow>\<^sub>M M' \<longleftrightarrow> f \<in> M \<Otimes>\<^sub>S K \<rightarrow>\<^sub>M M'"
+  using measurable_cong_sets[OF sets_kernel_semidirect_product] by blast
+
+locale finite_measure_kernel = K?: finite_kernel K + M?: finite_measure M
+  for K :: "('a, 'b) kernel" and M :: "'a measure" +
+  assumes sets_eq: "sets (kernel_source K) = sets M"
+      and nonempty: "space M \<noteq> {}"
+begin
+
+lemma space_eq: "space (kernel_source K) = space M"
+  by (fact sets_eq_imp_space_eq[OF sets_eq])
+
 lemma emeasure_times_semidirect_product: 
-  assumes "A \<in> sets M" "B \<in> sets (kernel_target K)" "finite_measure M" "finite_kernel K"
-    "sets (kernel_source K) = sets M" "space M \<noteq> {}"
-  shows "emeasure (M \<otimes>\<^sub>S K) (A \<times> B) = \<integral>\<^sup>+\<omega>\<^sub>1 \<in> A. K \<omega>\<^sub>1 B \<partial>M"
+  assumes "A \<in> sets M" "B \<in> sets (kernel_target K)"
+  shows "emeasure (M \<Otimes>\<^sub>S K) (A \<times> B) = \<integral>\<^sup>+\<omega>\<^sub>1 \<in> A. K \<omega>\<^sub>1 B \<partial>M"
   unfolding kernel_semidirect_product_def apply (simp add: kernel_measure_emeasure)
   apply (subst kernel_prod_partial_apply)
-  using assms(3)[THEN emeasure_kernel_finite] apply blast
-  using assms(4) apply argo
-  using assms(5) apply simp
-  using assms(6) apply (simp add: sets_eq_imp_space_eq[OF assms(5)] some_in_eq)
+  apply (simp add: emeasure_kernel_finite finite_measure_axioms)
+  apply (simp add: finite_kernel_axioms)
+  using sets_eq apply simp
+  using nonempty apply (simp add: space_eq some_in_eq)
   using assms(1,2) apply simp
-   apply (simp add: sets_eq_imp_space_eq[OF assms(5)])
+   apply (simp add: space_eq)
    apply (subst kernel_measure_emeasure_kernel)
-  using some_in_eq assms(6) apply blast
+  using some_in_eq nonempty apply blast
    apply (rule nn_integral_cong)
    apply (simp add: indicator_times)
   apply (simp add: assms(2) kernel_measure_emeasure mult.commute nn_integral_cmult_indicator)
   done
 
-text \<open> Klenke Corollary 14.27 \<close>
+lemma indicator_diff_ennreal: "indicator (A - B) x = indicator A x * (1 - indicator B x ::ennreal)"
+  by (simp add: indicator_def)
 
+lemma kernel_Fubini:
+  assumes f[measurable]: "f \<in> borel_measurable (M \<Otimes>\<^sub>M (kernel_target K))"
+  shows "(\<integral>\<^sup>+\<omega>. f \<omega> \<partial>(M \<Otimes>\<^sub>S K)) = (\<integral>\<^sup>+\<omega>\<^sub>1. (\<integral>\<^sup>+\<omega>\<^sub>2. f (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1) \<partial>M)"
+using f proof induct
+  case (cong f g)
+  then have "\<And>x y. x \<in> space M \<Longrightarrow> y \<in> space (kernel_target K) \<Longrightarrow> f (x,y) = g (x,y)"
+    using space_pair_measure by fast
+  then show ?case
+    by (smt (verit, best) cong.hyps(3) cong.hyps(4) kernel_measure_space nn_integral_cong
+        sets_eq_imp_space_eq sets_kernel_semidirect_product)
+next
+  case (set A)
+  let ?G = "{a \<times> b | a b. a \<in> sets M \<and> b \<in> sets (kernel_target K)}"
+  have G_sets_generator: "sigma_sets (space (M \<Otimes>\<^sub>M kernel_target K)) ?G = sets (M \<Otimes>\<^sub>S K)"
+    by (simp add: sets_kernel_semidirect_product sets_pair_measure space_pair_measure)
+  have Int_stable: "Int_stable ?G"
+    using Int_stable_pair_measure_generator by blast
+  have closed: "?G \<subseteq> Pow (space (M \<Otimes>\<^sub>M kernel_target K))"
+    by (simp add: pair_measure_closed space_pair_measure)
+  have A_in: "A \<in> sigma_sets (space (M \<Otimes>\<^sub>M kernel_target K)) ?G"
+    by (metis set sets_pair_measure space_pair_measure)
+  show ?case
+    using Int_stable closed A_in
+  proof (induct rule: sigma_sets_induct_disjoint)
+    case (basic A)
+    then obtain X Y where XY: "A = X \<times> Y" "X \<in> sets M" "Y \<in> sets (kernel_target K)"
+      by blast
+    from basic have [simp]: "A \<in> sets (M \<Otimes>\<^sub>S K)"
+      using G_sets_generator sigma_sets.Basic by blast
+    show ?case
+      apply simp
+      apply (simp add: XY(1))
+      apply (subst emeasure_times_semidirect_product[OF XY(2) XY(3)])
+      apply (subst indicator_times)
+      by (simp add: XY kernel_measure_emeasure mult.commute nn_integral_cmult_indicator)
+  next
+    case empty
+    then show ?case
+      by force
+  next
+    case (compl A)
+    have "integral\<^sup>N (M \<Otimes>\<^sub>S K) (indicator (space (M \<Otimes>\<^sub>M kernel_target K) - A)) =
+      (\<integral>\<^sup>+ \<omega>. indicator (space (M \<Otimes>\<^sub>M kernel_target K)) \<omega> * (1 - indicator A \<omega>) \<partial>(M \<Otimes>\<^sub>S K))"
+      by (meson indicator_diff_ennreal)
+    also have "... = \<integral>\<^sup>+ \<omega>. (1 - indicator A \<omega>) \<partial>(M \<Otimes>\<^sub>S K)"
+      apply (rule nn_integral_cong)
+      apply (simp only: space_kernel_semidirect_product space_pair_measure)
+      by auto
+    also have "... = (\<integral>\<^sup>+ \<omega>. 1 \<partial>(M \<Otimes>\<^sub>S K)) - (\<integral>\<^sup>+ \<omega>. indicator A \<omega> \<partial>(M \<Otimes>\<^sub>S K))"
+      apply (rule nn_integral_diff)
+         apply simp
+      using G_sets_generator borel_measurable_indicator compl(1) apply blast
+       defer (* SHOW semidirect product finite *)
+       apply (simp add: indicator_def)
+      sorry
+    also have "... = emeasure (M \<Otimes>\<^sub>S K) (space (M \<Otimes>\<^sub>S K)) -
+         \<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. indicator A (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M"
+      using compl.hyps(2) by simp
+    finally show ?case
+      sorry      
+  next
+    case (union A)
+    then have "A i \<in> sets (M \<Otimes>\<^sub>S K)" for i
+      using G_sets_generator by blast
+    have "integral\<^sup>N (M \<Otimes>\<^sub>S K) (indicator (\<Union> (range A))) = \<integral>\<^sup>+\<omega>. (\<Sum>i. indicator (A i) \<omega>) \<partial>(M \<Otimes>\<^sub>S K)"
+      by (metis suminf_indicator union(1))
+    also have "... = (\<Sum>i. \<integral>\<^sup>+\<omega>. indicator (A i) \<omega> \<partial>(M \<Otimes>\<^sub>S K))"
+      apply (rule nn_integral_suminf)
+      using union(2) by (simp add: G_sets_generator)
+    also have "... = (\<Sum>i. \<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. indicator (A i) (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M)"
+      using union(3) by presburger
+    also have "... = \<integral>\<^sup>+ \<omega>\<^sub>1. (\<Sum>i. \<integral>\<^sup>+ \<omega>\<^sub>2. indicator (A i) (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1) \<partial>M"
+      apply (rule nn_integral_suminf[symmetric])
+      apply measurable
+        apply (rule pred_sets2)
+         apply (fact \<open>\<And>i. A i \<in> sets (M \<Otimes>\<^sub>S K)\<close>)
+        apply (smt (verit, ccfv_SIG) measurable_ident_sets sets_eq sets_kernel_semidirect_product sets_pair_measure_cong)
+       apply (fact finite_kernel_axioms)
+      apply (simp add: measurable_ident_sets sets_eq)
+      done
+    also have "... = \<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2.(\<Sum>i. indicator (A i) (\<omega>\<^sub>1, \<omega>\<^sub>2))\<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M"
+      apply (rule nn_integral_cong)
+      apply (rule nn_integral_suminf[symmetric])
+      apply measurable
+      apply (rule pred_sets2)
+       apply (rule \<open>\<And>i. A i \<in> sets (M \<Otimes>\<^sub>S K)\<close>)
+      by (metis (no_types, lifting) kernel_measure_sets measurable_Pair1' measurable_cong_sets sets_kernel_semidirect_product)
+    also have "... = \<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. indicator (\<Union> (range A)) (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M"
+      by (simp add: suminf_indicator[OF union(1)])
+    finally show ?case .
+  qed
+next
+  case (mult u v)
+  have L: "(\<integral>\<^sup>+ \<omega>. v * u \<omega> \<partial>(M \<Otimes>\<^sub>S K)) = v * (\<integral>\<^sup>+ \<omega>. u \<omega> \<partial>(M \<Otimes>\<^sub>S K))"
+    using nn_integral_cmult kernel_semidirect_product_measurable mult.hyps(2) by blast
+  have "(\<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. v * u (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M) = \<integral>\<^sup>+ \<omega>\<^sub>1. v * (\<integral>\<^sup>+ \<omega>\<^sub>2. u (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K \<omega>\<^sub>1) \<partial>M"
+    apply (rule nn_integral_cong)
+    apply (intro nn_integral_cmult)
+     apply (metis mult.hyps(2) measurable_Pair2 measurable_kernel_measure)
+    done
+  also have "... = v * (\<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. u (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M)"
+    apply (rule nn_integral_cmult)
+    using mult.hyps(2) sets_eq finite_kernel_axioms by measurable
+  finally show ?case
+    using L mult.hyps(4) by argo
+next
+  case (add u v)
+  have L: "(\<integral>\<^sup>+ \<omega>. v \<omega> + u \<omega> \<partial>(M \<Otimes>\<^sub>S K)) = (\<integral>\<^sup>+ \<omega>. v \<omega> \<partial>(M \<Otimes>\<^sub>S K)) + (\<integral>\<^sup>+ \<omega>. u \<omega> \<partial>(M \<Otimes>\<^sub>S K))"
+    using nn_integral_add kernel_semidirect_product_measurable add.hyps(1,4) by blast
+  have "(\<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. v (\<omega>\<^sub>1, \<omega>\<^sub>2) + u (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M) =
+   \<integral>\<^sup>+ \<omega>\<^sub>1. (\<integral>\<^sup>+ \<omega>\<^sub>2. v (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K \<omega>\<^sub>1) + (\<integral>\<^sup>+ \<omega>\<^sub>2. u (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K \<omega>\<^sub>1) \<partial>M"
+    apply (rule nn_integral_cong)
+    apply (intro nn_integral_add)
+     apply (metis add.hyps(4) measurable_Pair2 measurable_kernel_measure)
+     apply (metis add.hyps(1) measurable_Pair2 measurable_kernel_measure)
+    done
+  also have "... = (\<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. v (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M) + (\<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. u (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M)"
+    apply (rule nn_integral_add)
+    using add.hyps(1,4) sets_eq finite_kernel_axioms by measurable
+  finally show ?case
+    using L add.hyps(3,7) by argo
+  next
+  case (seq U)
+  then have 1: "\<And>i. U i \<in> borel_measurable (M \<Otimes>\<^sub>S K)"
+    using kernel_semidirect_product_measurable by blast
+  have "integral\<^sup>N (M \<Otimes>\<^sub>S K) (\<Squnion> range U) = \<integral>\<^sup>+ x. (\<Squnion>i. U i x) \<partial>(M \<Otimes>\<^sub>S K)"
+    by (intro nn_integral_cong SUP_apply)
+  then have L: "integral\<^sup>N (M \<Otimes>\<^sub>S K) (\<Squnion> range U) = (\<Squnion>i. integral\<^sup>N (M \<Otimes>\<^sub>S K) (U i))"
+    by (simp add: nn_integral_monotone_convergence_SUP[OF seq(4) 1])
+  have "(\<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. (\<Squnion> range U) (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M) =
+         \<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. (\<Squnion>i. U i (\<omega>\<^sub>1, \<omega>\<^sub>2)) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M"
+    by (subst SUP_apply, argo)
+  also have "... = \<integral>\<^sup>+ \<omega>\<^sub>1. (\<Squnion>i. \<integral>\<^sup>+ \<omega>\<^sub>2. U i (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K \<omega>\<^sub>1) \<partial>M"
+    apply (rule nn_integral_cong)
+    apply (intro nn_integral_monotone_convergence_SUP)
+    using seq(4) mono_compose apply blast
+    apply (metis measurable_Pair2 measurable_kernel_measure seq.hyps(1))
+    done
+  also have "... = (\<Squnion>i. \<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. U i (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M)"
+    apply (intro nn_integral_monotone_convergence_SUP)
+    using seq(4) apply (simp add: incseq_def le_fun_def nn_integral_mono)
+    apply measurable
+    using seq.hyps(1) sets_eq finite_kernel_axioms apply auto
+    done
+  finally show ?case
+    using L seq(3) by presburger
+qed
+
+end
+
+text \<open> Klenke Corollary 14.27 \<close>
+(*
 corollary kernel_finite_product:
-  fixes n I K M
-  assumes "\<forall>i \<in> {1..n}. sets (kernel_source (K (i - 1))) = sets (M (i - 1)) \<and> sets (kernel_target (K i)) = sets (M i) \<and> stochastic_kernel (K i)"
+  assumes "\<forall>i \<in> {1..(n::nat)}. sets (kernel_source (K (i - 1))) = sets (M (i - 1)) \<and> sets (kernel_target (K i)) = sets (M i) \<and> stochastic_kernel (K i)"
   shows undefined
   oops
+*)
 
 end
