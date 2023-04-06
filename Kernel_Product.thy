@@ -77,115 +77,94 @@ lemma kernel_snd_measurable:
           "finite_kernel K"
   shows "(\<lambda>w. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) \<in> borel_measurable M1"
 proof -
-  {
-    fix A
-    assume "A \<in> {x \<times> y | x y. x \<in> sets M1 \<and> y \<in> sets M2}"
+  let ?G = "{x \<times> y | x y. x \<in> sets M1 \<and> y \<in> sets M2}"
+  have sigma_G: "sigma_sets (space (M1 \<Otimes>\<^sub>M M2)) ?G = sets (M1 \<Otimes>\<^sub>M M2)"
+    by (metis sets_pair_measure space_pair_measure)
+  have "Int_stable ?G"
+    using Int_stable_pair_measure_generator by blast
+  moreover have "?G \<subseteq> Pow (space (M1 \<Otimes>\<^sub>M M2))"
+    by (simp add: pair_measure_closed space_pair_measure)
+  moreover have "A \<in> sigma_sets (space (M1 \<Otimes>\<^sub>M M2)) ?G"
+    by (metis assms(2) sets_pair_measure space_pair_measure)
+  ultimately show ?thesis
+  proof (induct rule: sigma_sets_induct_disjoint)
+    case (basic A)
     then obtain x y where xy: "A = x \<times> y" "x \<in> sets M1"  "y \<in> sets M2"
-      by blast
+    by blast
     then have "w \<in> x \<Longrightarrow> {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A} = y" for w
       by blast
     moreover have "w \<notin> x \<Longrightarrow> {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A} = {}" for w
       using xy by blast
     moreover have "(\<lambda>w. kernel K (\<omega>\<^sub>0, w) A') \<in> borel_measurable M1" if "A' \<in> sets M2" for A'
       using assms that by (measurable, auto)
-    ultimately have "(\<lambda>w. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) \<in> borel_measurable M1"
+    ultimately show "(\<lambda>w. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) \<in> borel_measurable M1"
       using xy apply auto
       apply measurable
         apply (smt (verit, ccfv_SIG) M2_def empty_Collect_eq mem_Collect_eq sets.empty_sets subsetI subset_antisym)
       using assms(3) assms(4) apply force
       unfolding pred_def by auto
-    } note pair = this
-    have Int: "Int_stable {x \<times> y | x y. x \<in> sets M1 \<and> y \<in> sets M2}"
-      using Int_stable_pair_measure_generator by blast
-    have Dynkin: "Dynkin_system (space (M1 \<Otimes>\<^sub>M M2)) {A \<in> sets (M1 \<Otimes>\<^sub>M M2). (\<lambda>w. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) \<in> borel_measurable M1}"
-      (is "Dynkin_system (space (M1 \<Otimes>\<^sub>M M2)) ?D")
-    proof (rule Dynkin_systemI)
-      show "A \<in> ?D \<Longrightarrow> A \<subseteq> space (M1 \<Otimes>\<^sub>M M2)" for A
-        by (simp add: sets.sets_into_space)
-      show "space (M1 \<Otimes>\<^sub>M M2) \<in> ?D"
-        using pair[of "space (M1 \<Otimes>\<^sub>M M2)"] space_pair_measure by blast
-      fix A assume A: "A \<in> ?D"
-      then have A_measurable: "(\<lambda>w. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) \<in> borel_measurable M1"
+  next
+    case empty
+    then show ?case by simp
+  next
+    case (compl A)
+    {
+      fix w assume w: "w \<in> space M1"
+      then have space: "{\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> space (M1 \<Otimes>\<^sub>M M2)} = space M2"
+        unfolding space_pair_measure by auto
+      from w have "(\<omega>\<^sub>0, w) \<in> space (kernel_source K)"
+        by (metis assms(3,4) SigmaI sets_eq_imp_space_eq space_pair_measure)
+      then have "finite_measure (kernel_measure K (\<omega>\<^sub>0, w))"
+        by (simp add: finite_kernel.finite_measures assms(5))
+      then have "kernel_measure K (\<omega>\<^sub>0, w) (space M2 - {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) = 
+          kernel_measure K (\<omega>\<^sub>0, w) (space M2) - kernel_measure K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}"
+        unfolding M2_def apply (subst kernel_measure_space[THEN sym])+
+        apply (rule emeasure_compl)
+        using sigma_G compl M2_def w apply force
+        by (simp add: finite_measure.emeasure_finite)
+      then have "K (\<omega>\<^sub>0, w) (space M2 - {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) = K (\<omega>\<^sub>0, w) (space M2) - K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}"
+        using kernel_measure_emeasure by metis
+    } note diff = this
+    have space_eq: "{\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> space (M1 \<Otimes>\<^sub>M M2)} = space M2" if "w \<in> space M1" for w
+      by (simp add: that space_pair_measure)
+    have "(\<lambda>w. K (\<omega>\<^sub>0, w) (space M2 - {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A})) \<in> borel_measurable M1"
+      apply (subst measurable_cong[OF diff])
+       apply simp
+      unfolding M2_def using assms(3) apply measurable
+      using assms(4) apply simp
+       apply auto
+      using compl by simp
+    then show ?case
+      apply (subst measurable_cong[where g="(\<lambda>w. K (\<omega>\<^sub>0, w) (space M2 - {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}))"])
+       apply (smt (verit, best) Collect_cong Diff_iff mem_Collect_eq minus_set_def space_eq)
+      apply simp 
+      done
+  next
+    case (union A)
+    {
+      fix w assume w: "w \<in> space M1"
+      then have "(\<omega>\<^sub>0, w) \<in> space (kernel_source K)"
+        using assms(4) sets_eq_imp_space_eq[OF assms(3)] space_pair_measure by blast
+      then have "measure_space (space M2) (sets M2) (kernel K (\<omega>\<^sub>0, w))"
+        using kernel.space_source_measure unfolding M2_def by fast
+      then have countably_additive: "countably_additive (sets M2) (kernel K (\<omega>\<^sub>0, w))"
+        unfolding measure_space_def by blast
+      have 1: "range (\<lambda>i. {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A i}) \<subseteq> sets M2"
+        using union(2) sigma_G w unfolding M2_def by force
+      have 2: "disjoint_family (\<lambda>i. {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A i})"
+        using union(1) unfolding disjoint_family_on_def by auto
+      have 3: "(\<Union>i. {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A i}) \<in> sets M2"
+        using 1 by blast
+      have 4: "{\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> \<Union>(range A)} = (\<Union>i. {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A i})"
         by blast
-      {
-        fix w assume w: "w \<in> space M1"
-        then have space: "{\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> space (M1 \<Otimes>\<^sub>M M2)} = space M2"
-          unfolding space_pair_measure by auto
-        from w have "(\<omega>\<^sub>0, w) \<in> space (kernel_source K)"
-          by (metis assms(3,4) SigmaI sets_eq_imp_space_eq space_pair_measure)
-        then have "finite_measure (kernel_measure K (\<omega>\<^sub>0, w))"
-          by (simp add: finite_kernel.finite_measures assms(5))
-        then have "kernel_measure K (\<omega>\<^sub>0, w) (space M2 - {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) = 
-            kernel_measure K (\<omega>\<^sub>0, w) (space M2) - kernel_measure K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}"
-          unfolding M2_def apply (subst kernel_measure_space[THEN sym])+
-          apply (rule emeasure_compl)
-          using A M2_def w apply force
-          by (simp add: finite_measure.emeasure_finite)
-        then have "K (\<omega>\<^sub>0, w) (space M2 - {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) = K (\<omega>\<^sub>0, w) (space M2) - K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}"
-          using kernel_measure_emeasure by metis
-      } note diff = this
-      have space_eq: "{\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> space (M1 \<Otimes>\<^sub>M M2)} = space M2" if "w \<in> space M1" for w
-        by (simp add: that space_pair_measure)
-      have "(\<lambda>w. K (\<omega>\<^sub>0, w) (space M2 - {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A})) \<in> borel_measurable M1"
-        apply (subst measurable_cong[OF diff])
-         apply simp
-        unfolding M2_def using assms(3) apply measurable
-        using assms(4) apply simp
-         apply auto
-        using A_measurable by simp
-      then show "space (M1 \<Otimes>\<^sub>M M2) - A \<in> ?D"
-         apply safe
-        using A apply blast
-        by (smt (verit) space_eq measurable_cong Collect_cong mem_Collect_eq set_diff_eq)
-        
-    next
-      fix A assume A: "disjoint_family (A :: nat => ('b \<times> 'c) set)" "range A \<subseteq> ?D"
-      { 
-        fix i :: nat have "A i \<in> ?D"
-          using A by blast
-        then have A_sets: "A i \<in> sets (M1 \<Otimes>\<^sub>M M2)"
-          by blast
-        from \<open>A i \<in> ?D\<close> have "(\<lambda>w. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A i}) \<in> borel_measurable M1"
-          by blast
-      } then have A_i: "\<And>i. (\<lambda>w. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A i}) \<in> borel_measurable M1"
-        by blast
-        {
-          fix w assume w: "w \<in> space M1"
-          then have "(\<omega>\<^sub>0, w) \<in> space (kernel_source K)"
-            using assms(4) sets_eq_imp_space_eq[OF assms(3)] space_pair_measure by blast
-          then have "measure_space (space M2) (sets M2) (kernel K (\<omega>\<^sub>0, w))"
-            using kernel.space_source_measure unfolding M2_def by fast
-          then have countably_additive: "countably_additive (sets M2) (kernel K (\<omega>\<^sub>0, w))"
-            unfolding measure_space_def by blast
-          have 1: "range (\<lambda>i. {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A i}) \<subseteq> sets M2"
-            using A(2) w unfolding M2_def by auto
-          have 2: "disjoint_family (\<lambda>i. {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A i})"
-            using A(1) unfolding disjoint_family_on_def by auto
-          have 3: "(\<Union>i. {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A i}) \<in> sets M2"
-            using 1 by blast
-          have 4: "{\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> \<Union>(range A)} = (\<Union>i. {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A i})"
-            by blast
-          have "kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> \<Union>(range A)} = (\<Sum>i. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A i})"
-            using countably_additive 1 2 3 4 unfolding countably_additive_def by presburger
-        } note additive = this
-        then have "(\<lambda>w. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> \<Union>(range A)}) \<in> borel_measurable M1"
-          apply (subst measurable_cong[OF additive])
-           apply simp
-          using borel_measurable_suminf A_i by auto
-        then show "\<Union> (range A) \<in> ?D"
-          using A(2) by blast
-      qed
-    have "sigma_sets (space (M1 \<Otimes>\<^sub>M M2)) {x \<times> y | x y. x \<in> sets M1 \<and> y \<in> sets M2} =
-         {A \<in> sets (M1 \<Otimes>\<^sub>M M2). (\<lambda>w. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) \<in> borel_measurable M1}"
-      apply (rule Dynkin_system.Dynkin_lemma[OF Dynkin Int])
-      using pair apply blast
-      by (simp add: sets_pair_measure space_pair_measure)
-    then have "sets (M1 \<Otimes>\<^sub>M M2) = {A \<in> sets (M1 \<Otimes>\<^sub>M M2). (\<lambda>w. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) \<in> borel_measurable M1}"
-      by (metis sets_pair_measure space_pair_measure)
-    then have "\<And>A. A \<in> sets (M1 \<Otimes>\<^sub>M M2) \<Longrightarrow> (\<lambda>w. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) \<in> borel_measurable M1"
-      by blast
-    then show ?thesis
-      using assms(2) by blast
+      have "kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> \<Union>(range A)} = (\<Sum>i. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A i})"
+        using countably_additive 1 2 3 4 unfolding countably_additive_def by presburger
+    } note additive = this
+    then show "(\<lambda>w. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> \<Union>(range A)}) \<in> borel_measurable M1"
+      apply (subst measurable_cong[OF additive])
+       apply simp
+      using borel_measurable_suminf union by auto
+  qed
 qed
 
 text \<open> Klenke theorem 14.25 \<close>
