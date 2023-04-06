@@ -535,6 +535,12 @@ lemma emeasure_times_semidirect_product:
   apply (simp add: assms(2) kernel_measure_emeasure mult.commute nn_integral_cmult_indicator)
   done
 
+lemma kernel_semidirect_product_finite: "finite_measure (M \<Otimes>\<^sub>S K)"
+  apply (intro finite_measureI)
+  apply (simp add: space_pair_measure)
+  apply (subst emeasure_times_semidirect_product; simp)
+  oops
+
 lemma indicator_diff_ennreal: "indicator (A - B) x = indicator A x * (1 - indicator B x ::ennreal)"
   by (simp add: indicator_def)
 
@@ -550,85 +556,20 @@ using f proof induct
         sets_eq_imp_space_eq sets_kernel_semidirect_product)
 next
   case (set A)
-  let ?G = "{a \<times> b | a b. a \<in> sets M \<and> b \<in> sets (kernel_target K)}"
-  have G_sets_generator: "sigma_sets (space (M \<Otimes>\<^sub>M kernel_target K)) ?G = sets (M \<Otimes>\<^sub>S K)"
-    by (simp add: sets_kernel_semidirect_product sets_pair_measure space_pair_measure)
-  have Int_stable: "Int_stable ?G"
-    using Int_stable_pair_measure_generator by blast
-  have closed: "?G \<subseteq> Pow (space (M \<Otimes>\<^sub>M kernel_target K))"
-    by (simp add: pair_measure_closed space_pair_measure)
-  have A_in: "A \<in> sigma_sets (space (M \<Otimes>\<^sub>M kernel_target K)) ?G"
-    by (metis set sets_pair_measure space_pair_measure)
-  show ?case
-    using Int_stable closed A_in
-  proof (induct rule: sigma_sets_induct_disjoint)
-    case (basic A)
-    then obtain X Y where XY: "A = X \<times> Y" "X \<in> sets M" "Y \<in> sets (kernel_target K)"
-      by blast
-    from basic have [simp]: "A \<in> sets (M \<Otimes>\<^sub>S K)"
-      using G_sets_generator sigma_sets.Basic by blast
-    show ?case
-      apply simp
-      apply (simp add: XY(1))
-      apply (subst emeasure_times_semidirect_product[OF XY(2) XY(3)])
-      apply (subst indicator_times)
-      by (simp add: XY kernel_measure_emeasure mult.commute nn_integral_cmult_indicator)
-  next
-    case empty
-    then show ?case
-      by force
-  next
-    case (compl A)
-    have "integral\<^sup>N (M \<Otimes>\<^sub>S K) (indicator (space (M \<Otimes>\<^sub>M kernel_target K) - A)) =
-      (\<integral>\<^sup>+ \<omega>. indicator (space (M \<Otimes>\<^sub>M kernel_target K)) \<omega> * (1 - indicator A \<omega>) \<partial>(M \<Otimes>\<^sub>S K))"
-      by (meson indicator_diff_ennreal)
-    also have "... = \<integral>\<^sup>+ \<omega>. (1 - indicator A \<omega>) \<partial>(M \<Otimes>\<^sub>S K)"
-      apply (rule nn_integral_cong)
-      apply (simp only: space_kernel_semidirect_product space_pair_measure)
-      by auto
-    also have "... = (\<integral>\<^sup>+ \<omega>. 1 \<partial>(M \<Otimes>\<^sub>S K)) - (\<integral>\<^sup>+ \<omega>. indicator A \<omega> \<partial>(M \<Otimes>\<^sub>S K))"
-      apply (rule nn_integral_diff)
-         apply simp
-      using G_sets_generator borel_measurable_indicator compl(1) apply blast
-       defer (* SHOW semidirect product finite *)
-       apply (simp add: indicator_def)
-      sorry
-    also have "... = emeasure (M \<Otimes>\<^sub>S K) (space (M \<Otimes>\<^sub>S K)) -
-         \<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. indicator A (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M"
-      using compl.hyps(2) by simp
-    finally show ?case
-      sorry      
-  next
-    case (union A)
-    then have "A i \<in> sets (M \<Otimes>\<^sub>S K)" for i
-      using G_sets_generator by blast
-    have "integral\<^sup>N (M \<Otimes>\<^sub>S K) (indicator (\<Union> (range A))) = \<integral>\<^sup>+\<omega>. (\<Sum>i. indicator (A i) \<omega>) \<partial>(M \<Otimes>\<^sub>S K)"
-      by (metis suminf_indicator union(1))
-    also have "... = (\<Sum>i. \<integral>\<^sup>+\<omega>. indicator (A i) \<omega> \<partial>(M \<Otimes>\<^sub>S K))"
-      apply (rule nn_integral_suminf)
-      using union(2) by (simp add: G_sets_generator)
-    also have "... = (\<Sum>i. \<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. indicator (A i) (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M)"
-      using union(3) by presburger
-    also have "... = \<integral>\<^sup>+ \<omega>\<^sub>1. (\<Sum>i. \<integral>\<^sup>+ \<omega>\<^sub>2. indicator (A i) (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1) \<partial>M"
-      apply (rule nn_integral_suminf[symmetric])
-      apply measurable
-        apply (rule pred_sets2)
-         apply (fact \<open>\<And>i. A i \<in> sets (M \<Otimes>\<^sub>S K)\<close>)
-        apply (smt (verit, ccfv_SIG) measurable_ident_sets sets_eq sets_kernel_semidirect_product sets_pair_measure_cong)
-       apply (fact finite_kernel_axioms)
-      apply (simp add: measurable_ident_sets sets_eq)
-      done
-    also have "... = \<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2.(\<Sum>i. indicator (A i) (\<omega>\<^sub>1, \<omega>\<^sub>2))\<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M"
-      apply (rule nn_integral_cong)
-      apply (rule nn_integral_suminf[symmetric])
-      apply measurable
-      apply (rule pred_sets2)
-       apply (rule \<open>\<And>i. A i \<in> sets (M \<Otimes>\<^sub>S K)\<close>)
-      by (metis (no_types, lifting) kernel_measure_sets measurable_Pair1' measurable_cong_sets sets_kernel_semidirect_product)
-    also have "... = \<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. indicator (\<Union> (range A)) (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M"
-      by (simp add: suminf_indicator[OF union(1)])
-    finally show ?case .
-  qed
+  then show ?case
+    apply (subst nn_integral_indicator)
+    using sets_kernel_semidirect_product apply blast
+    unfolding kernel_semidirect_product_def 
+    apply (subst kernel_measure_emeasure)
+    apply (subst kernel_prod_partial_apply)
+    using emeasure_kernel_finite finite_measure_axioms apply blast
+    using finite_kernel_axioms apply blast
+       apply (simp add: sets_eq)
+      apply (simp add: nonempty some_in_eq space_eq)
+     apply simp
+    apply (subst kernel_measure_emeasure_kernel)
+     apply (simp add: nonempty some_in_eq space_eq)
+    ..
 next
   case (mult u v)
   have L: "(\<integral>\<^sup>+ \<omega>. v * u \<omega> \<partial>(M \<Otimes>\<^sub>S K)) = v * (\<integral>\<^sup>+ \<omega>. u \<omega> \<partial>(M \<Otimes>\<^sub>S K))"
