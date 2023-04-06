@@ -549,11 +549,14 @@ lemma kernel_Fubini:
   shows "(\<integral>\<^sup>+\<omega>. f \<omega> \<partial>(M \<Otimes>\<^sub>S K)) = (\<integral>\<^sup>+\<omega>\<^sub>1. (\<integral>\<^sup>+\<omega>\<^sub>2. f (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1) \<partial>M)"
 using f proof induct
   case (cong f g)
-  then have "\<And>x y. x \<in> space M \<Longrightarrow> y \<in> space (kernel_target K) \<Longrightarrow> f (x,y) = g (x,y)"
-    using space_pair_measure by fast
-  then show ?case
-    by (smt (verit, best) cong.hyps(3) cong.hyps(4) kernel_measure_space nn_integral_cong
-        sets_eq_imp_space_eq sets_kernel_semidirect_product)
+  have "integral\<^sup>N (M \<Otimes>\<^sub>S K) f = integral\<^sup>N (M \<Otimes>\<^sub>S K) g"
+    by (intro nn_integral_cong, simp add: space_pair_measure cong(3))
+  moreover have "(\<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. f (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M) =
+                 (\<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. g (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M)"
+    apply (rule nn_integral_cong)+
+    using cong(3) space_pair_measure by fastforce
+  ultimately show ?case
+    using cong(4) by argo
 next
   case (set A)
   then show ?case
@@ -574,7 +577,8 @@ next
   case (mult u v)
   have L: "(\<integral>\<^sup>+ \<omega>. v * u \<omega> \<partial>(M \<Otimes>\<^sub>S K)) = v * (\<integral>\<^sup>+ \<omega>. u \<omega> \<partial>(M \<Otimes>\<^sub>S K))"
     using nn_integral_cmult kernel_semidirect_product_measurable mult.hyps(2) by blast
-  have "(\<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. v * u (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M) = \<integral>\<^sup>+ \<omega>\<^sub>1. v * (\<integral>\<^sup>+ \<omega>\<^sub>2. u (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K \<omega>\<^sub>1) \<partial>M"
+  have "(\<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. v * u (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M) =
+         \<integral>\<^sup>+ \<omega>\<^sub>1. v * (\<integral>\<^sup>+ \<omega>\<^sub>2. u (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K \<omega>\<^sub>1) \<partial>M"
     apply (rule nn_integral_cong)
     apply (intro nn_integral_cmult)
      apply (metis mult.hyps(2) measurable_Pair2 measurable_kernel_measure)
@@ -595,7 +599,8 @@ next
      apply (metis add.hyps(4) measurable_Pair2 measurable_kernel_measure)
      apply (metis add.hyps(1) measurable_Pair2 measurable_kernel_measure)
     done
-  also have "... = (\<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. v (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M) + (\<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. u (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M)"
+  also have "... = (\<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. v (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M) 
+                 + (\<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. u (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M)"
     apply (rule nn_integral_add)
     using add.hyps(1,4) sets_eq finite_kernel_axioms by measurable
   finally show ?case
