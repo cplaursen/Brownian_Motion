@@ -1,10 +1,64 @@
 theory Continuous_Modification
-  imports Stochastic_Process Holder_Continuous Dyadic_Interval "Eisbach_Tools.Apply_Trace_Cmd"
+  imports Stochastic_Process Holder_Continuous Dyadic_Interval
 begin
 
 text \<open> Klenke 5.11: Markov inequality. Compare with @{thm nn_integral_Markov_inequality} \<close>
 
-lemma nn_integral_Markov_inequality':
+lemma nn_integral_Markov_inequality_extended:
+  fixes f :: "real \<Rightarrow> ennreal" and \<epsilon> :: real and X :: "'a \<Rightarrow> real"
+  assumes X[measurable]: "X \<in> borel_measurable M"
+      and mono: "mono f"
+      and finite: "\<And>x. f x < \<infinity>"
+      and e: "\<epsilon> > 0" "f \<epsilon> > 0"
+    shows "emeasure M {p \<in> space M. (X p) \<ge> \<epsilon>} \<le> (\<integral>\<^sup>+ x. f (X x) \<partial>M) / f \<epsilon>"
+proof -
+  have f_eq: "f = (\<lambda>x. ennreal (enn2real (f x)))"
+    using finite by simp
+  moreover have "mono (\<lambda>x. enn2real (f x))"
+    apply (intro monotoneI)
+    apply (subst enn2real_mono)
+    using mono[THEN monotoneD] finite by simp_all
+  ultimately have "(\<lambda>x. f (X x)) \<in> borel_measurable M"
+    apply (intro measurable_compose[where g=f and f=X])
+     apply measurable
+    apply (metis borel_measurable_mono measurable_compose_rev measurable_ennreal)
+    done
+  then have "{x \<in> space M. f (X x) \<ge> f \<epsilon>} \<in> sets M"
+    by measurable
+  then have "f \<epsilon> * emeasure M {p \<in> space M. X p \<ge> \<epsilon>} \<le> \<integral>\<^sup>+x\<in>{x \<in> space M. f \<epsilon> \<le> f (X x)}. f \<epsilon> \<partial>M"
+    apply (simp add: nn_integral_cmult_indicator)
+    apply (rule mult_left_mono)
+     apply (rule emeasure_mono)
+      apply simp_all
+      using e mono_onD[OF mono] apply auto
+    done
+  also have "... \<le> \<integral>\<^sup>+x\<in>{x \<in> space M. f \<epsilon> \<le> f (X x)}. f (X x)\<partial>M"
+    apply (rule nn_integral_mono)
+    subgoal for x
+      apply (cases "f \<epsilon> \<le> f (X x)")
+      using ennreal_leI by auto
+    done
+  also have "... \<le> \<integral>\<^sup>+ x. f (X x) \<partial>M"
+    by (simp add: divide_right_mono_ennreal nn_integral_mono indicator_def)
+  finally show ?thesis
+  proof -
+    assume "f \<epsilon> * emeasure M {p \<in> space M. \<epsilon> \<le> ( (X p))} \<le> \<integral>\<^sup>+ x. (f (X x)) \<partial>M"
+    then have "(f \<epsilon> * emeasure M {p \<in> space M. \<epsilon> \<le> ( (X p))}) / f \<epsilon> \<le> (\<integral>\<^sup>+ x. (f (X x)) \<partial>M) / f \<epsilon>"
+      by (fact divide_right_mono_ennreal)
+    moreover have "(f \<epsilon> * emeasure M {p \<in> space M. \<epsilon> \<le> (X p)}) / f \<epsilon> = emeasure M {p \<in> space M. \<epsilon> \<le> (X p)}"
+    proof -
+      have "(f \<epsilon> * emeasure M {p \<in> space M. \<epsilon> \<le> (X p)}) / f \<epsilon> = emeasure M {p \<in> space M. \<epsilon> \<le> (X p)} * f \<epsilon> / f \<epsilon>"
+        by (simp add: field_simps)
+      also have "... = emeasure M {p \<in> space M. \<epsilon> \<le> (X p)}"
+        by (metis (no_types, lifting) e(2) ennreal_mult_divide_eq infinity_ennreal_def finite order_less_irrefl)
+      finally show ?thesis .
+    qed
+    ultimately show ?thesis
+      by argo
+  qed
+qed
+
+lemma nn_integral_Markov_inequality_rnv:
   fixes f :: "real \<Rightarrow> real" and \<epsilon> :: real and X :: "'a \<Rightarrow> 'b :: real_normed_vector"
   assumes X[measurable]: "X \<in> borel_measurable M"
       and mono: "mono_on {0..} f"
@@ -76,7 +130,7 @@ text \<open> Klenke 21.6 - Kolmorogov-Chentsov\<close>
 
 text_raw \<open>\DefineSnippet{holder_continuous_modification}{\<close>
 theorem holder_continuous_modification:
-  fixes X :: "(real, 'a, 'b :: {polish_space, real_normed_vector}) stochastic_process"
+  fixes X :: "(real, 'a, 'b :: polish_space) stochastic_process"
   assumes index[simp]: "proc_index X = {0..}"
       and target_borel[measurable, simp]: "proc_target X = borel"
       and gt_0: "a > 0" "b > 0" "C > 0"
@@ -93,19 +147,21 @@ proof -
     by (metis assms(6) divide_le_eq_1_pos gamma greaterThanLessThan_iff gt_0(1) order_less_le_trans)
   then have "\<gamma> \<in> {0<..1}"
     by simp
-  text \<open> Consequence of @{thm nn_integral_Markov_inequality'} \<close>
+  text \<open> Consequence of @{thm nn_integral_Markov_inequality_extended} \<close>
   have markov: "\<P>(x in ?M. \<epsilon> \<le> dist (X t x) (X s x)) \<le> (C * dist t s powr (1 + b)) / \<epsilon> powr a"
     if "s \<ge> 0" "t \<ge> 0" "\<epsilon> > 0" for s t \<epsilon>
   proof -
     let ?inc = "\<lambda>x. dist (X t x) (X s x) powr a"
     have "emeasure ?M {x \<in> space ?M. \<epsilon> \<le> dist (X t x) (X s x)}
      \<le> integral\<^sup>N ?M ?inc / \<epsilon> powr a"
-      apply (subst dist_norm)+
-      apply (rule nn_integral_Markov_inequality')
+      apply (rule nn_integral_Markov_inequality_extended)
       using that(1,2) apply measurable
-        apply (metis random_X target_borel)
-        apply (metis random_X target_borel)
-      using gt_0(1) that(3) powr_mono2 by (auto intro: mono_onI)
+        apply (metis random_process target_borel)
+          apply (metis random_process target_borel)
+         apply (intro monoI)
+         apply (subst ennreal_le_iff2)
+         apply auto
+      sorry
     also have "... \<le> (C * dist t s powr (1 + b)) / ennreal (\<epsilon> powr a)"
       apply (rule divide_right_mono_ennreal)
       using expectation[OF that(1,2)] ennreal_leI by simp
@@ -187,7 +243,7 @@ proof -
        apply simp
       apply (simp only: if_False)
         apply measurable
-        apply (metis random_X target_borel)+
+        apply (metis random_process target_borel)+
       done
     have "emeasure ?M (A n) \<le> ennreal (C * T * 2 powr (real_of_int (- int n) * (b - a * \<gamma>)))"
       if [simp]: "2^n * T \<ge> 1" for n
@@ -215,7 +271,7 @@ proof -
       next
         show "?R \<in> sets ?M"
           apply measurable
-          by (smt (verit) target_borel random_X)+
+          by (smt (verit) target_borel random_process)+
       qed
       also have "... \<le> (\<Sum>k\<in>{1..\<lfloor>2^n * T\<rfloor>}. emeasure ?M 
     {x\<in>space ?M. dist (X (real_of_int (k - 1) * 2 powr - real n) x) (X (real_of_int k * 2 powr - real n) x) \<ge> 2 powr (- \<gamma> * real n)})"
@@ -224,7 +280,7 @@ proof -
         apply (subst image_subset_iff)
         apply (intro ballI)
         apply measurable
-         apply (metis random_X target_borel)+
+         apply (metis random_process target_borel)+
         done
       also have "... \<le> C * 2 powr (- n * (1 + b - a * \<gamma>)) * (card {1..\<lfloor>2 ^ n * T\<rfloor>})"
       proof -
@@ -373,12 +429,12 @@ proof -
       {
         fix m n :: nat assume mn: "m \<ge> n" "n \<ge> n\<^sub>0"
         fix s t :: real 
-          assume s_dyadic: "s \<in> dyadic_interval m 0 T"
-          and t_dyadic: "t \<in> dyadic_interval m 0 T"
+          assume s_dyadic: "s \<in> dyadic_interval_step m 0 T"
+          and t_dyadic: "t \<in> dyadic_interval_step m 0 T"
           and st: "s \<le> t" "norm (s - t) \<le> 1/2^n"
         let ?u = "\<lfloor>2^n * s\<rfloor> / 2^n"
-        have "?u = Max (dyadic_interval n 0 s)"
-          apply (rule dyadic_interval_Max[symmetric])
+        have "?u = Max (dyadic_interval_step n 0 s)"
+          apply (rule dyadic_interval_step_Max[symmetric])
           apply (rule dyadics_geq[OF s_dyadic])
           done
         have "?u \<le> s"
@@ -409,8 +465,8 @@ proof -
         by (smt (verit) \<open>\<gamma> > 0\<close> \<open>\<gamma> < 1\<close> less_divide_eq_1_pos powr_eq_one_iff powr_ge_pzero powr_le_cancel_iff)
       {
         fix s t
-        assume s: "s \<in> (\<Union>n. dyadic_interval n 0 T)"
-           and t: "t \<in> (\<Union>n. dyadic_interval n 0 T)"
+        assume s: "s \<in> (\<Union>n. dyadic_interval_step n 0 T)"
+           and t: "t \<in> (\<Union>n. dyadic_interval_step n 0 T)"
            and st_dist: "dist t s \<le> 1 / 2 ^ n\<^sub>0"
            and neq: "s \<noteq> t"
         then have "dist t s > 0"
@@ -430,27 +486,28 @@ proof -
       } note dist_dyadic = this
       let ?K = "\<lambda>t s. ?C\<^sub>0 * 2 powr ((1-\<gamma>) * n\<^sub>0) * (dist t s) powr \<gamma>"
       have X_incr: "dist (X t \<omega>) (X s \<omega>) \<le> ?K t s"
-        if "s \<in> (\<Union>n. dyadic_interval n 0 T)" and "t \<in> (\<Union>n. dyadic_interval n 0 T)"
+        if "s \<in> (\<Union>n. dyadic_interval_step n 0 T)" and "t \<in> (dyadic_interval 0 T)"
         for s t
         using dist_dyadic sorry
-      then have holder_dyadic: "\<gamma>-holder_on (\<Union>n. dyadic_interval n 0 T) (\<lambda>t. X t \<omega>)"
+      then have holder_dyadic: "\<gamma>-holder_on (dyadic_interval 0 T) (\<lambda>t. X t \<omega>)"
         apply (intro holder_onI)
         using \<open>\<gamma> \<in> {0<..1}\<close> apply argo
         apply (intro exI[where x="?C\<^sub>0 * 2 powr ((1-\<gamma>) * n\<^sub>0)"])
-        using \<open>?C\<^sub>0 > 0\<close> apply (auto simp: \<open>?C\<^sub>0 > 0\<close>zero_less_divide_iff)
+        using \<open>?C\<^sub>0 > 0\<close> unfolding dyadic_interval_def
+          apply (auto simp: \<open>?C\<^sub>0 > 0\<close> zero_less_divide_iff)
         done
-      then have "uniformly_continuous_on (\<Union>n. dyadic_interval n 0 T) (\<lambda>t. X t \<omega>)"
+      then have "uniformly_continuous_on (dyadic_interval 0 T) (\<lambda>t. X t \<omega>)"
         by (fact holder_uniform_continuous)
-      then have "\<exists>L. ((\<lambda>s. X s \<omega>) \<longlongrightarrow> L) (at t within (\<Union>n. dyadic_interval n 0 T))"
-        if "t \<in> {0..T} - (\<Union>n. dyadic_interval n 0 T)" for t
+      then have "\<exists>L. ((\<lambda>s. X s \<omega>) \<longlongrightarrow> L) (at t within (dyadic_interval 0 T))"
+        if "t \<in> {0..T} - (dyadic_interval 0 T)" for t
         apply (rule uniformly_continuous_on_extension_at_closure[where x = t])
         using that dyadic_interval_dense apply fast
         apply fast
         done
       define L where
-          "L \<equiv> (\<lambda>t. (THE L. ((\<lambda>s. X s \<omega>) \<longlongrightarrow> L) (at t within (\<Union>n. dyadic_interval n 0 T))))"
+          "L \<equiv> (\<lambda>t. (THE L. ((\<lambda>s. X s \<omega>) \<longlongrightarrow> L) (at t within (\<Union>n. dyadic_interval_step n 0 T))))"
       define X_tilde :: "real \<Rightarrow> 'b" where
-        "X_tilde \<equiv> \<lambda>t. if t \<in> (\<Union>n. dyadic_interval n 0 T) then X t \<omega> else L t"
+        "X_tilde \<equiv> \<lambda>t. if t \<in> (\<Union>n. dyadic_interval_step n 0 T) then X t \<omega> else L t"
       then have "dist (X_tilde s) (X_tilde t) \<le> ?K s t" if "s \<in> {0..T}" "t \<in> {0..T}" for s t
         sorry text \<open> Should be analogous to the proof of @{thm dist_dyadic} \<close>
       then have "\<gamma>-holder_on {0..T} X_tilde"
@@ -462,9 +519,11 @@ proof -
       then have "local_holder_on \<gamma> {0..T} X_tilde"
         using holder_implies_local_holder by blast
     } note X_tilde_arb_omega = this (* GIVE BETTER NAME *)
+    define default :: 'b where "default = (SOME x. True)"
     define X_tilde :: "real \<Rightarrow> 'a \<Rightarrow> 'b" where
-    "X_tilde \<equiv> (\<lambda>t \<omega>. if \<omega> \<in> ?N then 0 else
-                      (if t \<in> (\<Union>n. dyadic_interval n 0 T) then X t \<omega> else THE L. ((\<lambda>s. X s \<omega>) \<longlongrightarrow> L) (at t within (\<Union>n. dyadic_interval n 0 T))))"
+    "X_tilde \<equiv> (\<lambda>t \<omega>. if \<omega> \<in> ?N then default else
+                      (if t \<in> (\<Union>n. dyadic_interval_step n 0 T) then X t \<omega>
+               else THE L. ((\<lambda>s. X s \<omega>) \<longlongrightarrow> L) (at t within (\<Union>n. dyadic_interval_step n 0 T))))"
     have local_holder_X_tilde: "local_holder_on \<gamma> {0..T} (\<lambda>t. X_tilde t \<omega>)" if "\<omega> \<in> space ?M" for \<omega>
     proof (cases "\<omega> \<in> ?N")
       case True
@@ -478,7 +537,7 @@ proof -
         unfolding X_tilde_def by (simp only: False if_False X_tilde_arb_omega[OF 1])
     qed
     have "AE \<omega> in ?M. X t \<omega> = X_tilde t \<omega>" if "t \<in> {0..T}" for t
-    proof (cases "t \<in> (\<Union>n. dyadic_interval n 0 T)")
+    proof (cases "t \<in> (\<Union>n. dyadic_interval_step n 0 T)")
       case True
       then have "\<omega> \<notin> ?N \<Longrightarrow> X t \<omega> = X_tilde t \<omega>" for \<omega>
         unfolding X_tilde_def by (simp only: if_True if_False)
@@ -494,18 +553,19 @@ proof -
     qed
     moreover have X_tilde_measurable: "X_tilde t \<in> borel_measurable ?M" if "t \<in> {0..T}" for t
       unfolding X_tilde_def apply measurable
-         apply (metis random_X target_borel)
+         apply (metis random_process target_borel)
         defer
       using sets.sets_Collect_const apply blast
        apply auto[1]
+      find_theorems tendsto borel
       sorry (* Prove limit is measurable *)
-    ultimately have "modification (restrict_index X {0..T}) (process_of ?M (proc_target X) {0..T} X_tilde 0)"
+    ultimately have "modification (restrict_index X {0..T}) (process_of ?M (proc_target X) {0..T} X_tilde default)"
       apply (intro modificationI)
       unfolding compatible_def apply safe
            apply (simp_all add: proc_source.prob_space_axioms)
       by (metis restrict_index_source)
     then have "\<exists>Y. modification (restrict_index X {0..T}) Y \<and> (\<forall>x \<in> space ?M. local_holder_on \<gamma> {0..T} (\<lambda>t. process Y t x))"
-      apply (intro exI[where x="(process_of ?M (proc_target X) {0..T} X_tilde 0)"])
+      apply (intro exI[where x="(process_of ?M (proc_target X) {0..T} X_tilde default)"])
       apply safe
       apply (subst process_process_of)
          apply (simp_all add: proc_source.prob_space_axioms X_tilde_measurable)
@@ -588,7 +648,8 @@ proof -
     then show ?thesis
       using that(2) by blast
   qed
-  define X_mod where "X_mod \<equiv> \<lambda>t \<omega>. if \<omega> \<in> space ?M - N_inf then (Mod \<lfloor>t+1\<rfloor>) t \<omega> else 0"
+  define default :: 'b where "default = (SOME x. True)"
+  define X_mod where "X_mod \<equiv> \<lambda>t \<omega>. if \<omega> \<in> space ?M - N_inf then (Mod \<lfloor>t+1\<rfloor>) t \<omega> else default"
   have Mod_measurable[measurable]: "\<forall>t\<in>{0..}. X_mod t \<in> ?M \<rightarrow>\<^sub>M proc_target X"
   proof (intro ballI)
     fix t :: real assume "t \<in> {0..}"
@@ -599,14 +660,14 @@ proof -
         apply (subst measurable_cong_sets[where M'= "proc_source (Mod \<lfloor>t + 1\<rfloor>)" and N' = "proc_target (Mod \<lfloor>t + 1\<rfloor>)"])
       using Mod_source \<open>0 < \<lfloor>t + 1\<rfloor>\<close> apply presburger
       using Mod_target \<open>0 < \<lfloor>t + 1\<rfloor>\<close> apply presburger
-        apply (meson random_X)
+        apply (meson random_process)
       apply simp
       apply (metis \<open>N_inf \<in> null_sets ?M\<close> Int_def null_setsD2 sets.Int_space_eq1 sets.compl_sets)
       done
   qed
-  have "modification X (process_of ?M (proc_target X) {0..} X_mod 0)"
+  have "modification X (process_of ?M (proc_target X) {0..} X_mod default)"
   proof (intro modificationI ballI)
-    show "compatible X (process_of ?M (proc_target X) {0..} X_mod 0)"
+    show "compatible X (process_of ?M (proc_target X) {0..} X_mod default)"
       apply (intro compatibleI)
         apply (subst source_process_of)
            prefer 5 apply (subst target_process_of)
@@ -618,9 +679,9 @@ proof -
     then have "real_of_int \<lfloor>t\<rfloor> + 1 > 0"
       by (simp add: add.commute add_pos_nonneg)
     then have "\<exists>N \<in> null_sets ?M. \<forall>\<omega> \<in> space ?M - N. 
-        X t \<omega> = (process_of ?M (proc_target X) {0..} X_mod 0) t \<omega>"
+        X t \<omega> = (process_of ?M (proc_target X) {0..} X_mod default) t \<omega>"
     proof -
-      have 1: "(process_of ?M (proc_target X) {0..} X_mod 0) t \<omega> = (Mod (real_of_int \<lfloor>t\<rfloor> + 1)) t \<omega>"
+      have 1: "(process_of ?M (proc_target X) {0..} X_mod default) t \<omega> = (Mod (real_of_int \<lfloor>t\<rfloor> + 1)) t \<omega>"
           if "\<omega> \<in> space ?M - N_inf" for \<omega>
         apply (subst process_process_of)
         using Mod_measurable proc_source.prob_space_axioms apply auto
@@ -643,12 +704,12 @@ proof -
          apply (metis "1" DiffE DiffI UnCI)
         using \<open>N_inf \<in> null_sets ?M\<close> by blast
     qed
-    then show "AE x in ?M. X t x = (process_of ?M (proc_target X) {0..} X_mod 0) t x"
+    then show "AE x in ?M. X t x = (process_of ?M (proc_target X) {0..} X_mod default) t x"
       by (smt (verit, del_insts) DiffI eventually_ae_filter mem_Collect_eq subsetI)
   qed
 
-  text \<open>Because the processes are indistinguishable, they are all equal on \<omega>, so the local holder
-  continuity extends to {0..} . \<close>
+  text \<open> Because the processes are indistinguishable, they are all equal on \<omega>, so the local holder
+  continuity extends to {0..}. \<close>
   moreover have "local_holder_on \<gamma> {0..} (\<lambda>t. X_mod t \<omega>)" for \<omega>
   proof (cases "\<omega> \<in> space ?M - N_inf")
     case False
@@ -690,7 +751,8 @@ proof -
         assume r:  "r \<in> ball t \<epsilon>' \<inter> {0..}"
         assume s:  "s \<in> ball t \<epsilon>' \<inter> {0..}"
 
-        then have rs_ball: "r \<in> ball t \<epsilon> \<inter> {0..real_of_int \<lfloor>t\<rfloor> + 1}" "s \<in> ball t \<epsilon> \<inter> {0..real_of_int \<lfloor>t\<rfloor> + 1}"
+        then have rs_ball: "r \<in> ball t \<epsilon> \<inter> {0..real_of_int \<lfloor>t\<rfloor> + 1}"
+                           "s \<in> ball t \<epsilon> \<inter> {0..real_of_int \<lfloor>t\<rfloor> + 1}"
           using e' r s by auto
         then have "r \<in> {0..min (real_of_int \<lfloor>t\<rfloor> + 1) (real_of_int \<lfloor>r + 1\<rfloor>)}"
            by auto
@@ -698,8 +760,9 @@ proof -
           unfolding X_mod_def apply (simp only: True if_True)
           apply (intro Mod_eq_N_inf[OF True])
             apply simp
-          using \<open>t \<in> {0..}\<close> apply auto
-          apply (metis (no_types, opaque_lifting)floor_in_Nats Nats_1 Nats_add Nats_cases of_int_of_nat_eq of_nat_in_Nats, linarith)+
+            using \<open>t \<in> {0..}\<close> apply auto
+             apply (metis (no_types, opaque_lifting)floor_in_Nats Nats_1 Nats_add Nats_cases 
+                    of_int_of_nat_eq of_nat_in_Nats, linarith)+
           done
         moreover have "(Mod (real_of_int \<lfloor>t\<rfloor> + 1)) s \<omega> = X_mod s \<omega>"
           unfolding X_mod_def apply (simp only: True if_True)
@@ -721,7 +784,7 @@ proof -
   qed
 
   ultimately show ?thesis
-    apply (intro exI[where x="process_of ?M (proc_target X) {0..} (X_mod) 0"])
+    apply (intro exI[where x="process_of ?M (proc_target X) {0..} (X_mod) default"])
     apply simp
     apply (intro ballI)
     apply (subst process_process_of)
