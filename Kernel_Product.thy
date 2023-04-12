@@ -4,9 +4,11 @@ begin
 
 text \<open> Klenke theorem 14.25 \<close>
 
+text_raw \<open>\DefineSnippet{kernel_product}{\<close>
 definition kernel_product :: "('a, 'b) kernel \<Rightarrow> ('a \<times> 'b, 'c) kernel \<Rightarrow> ('a, 'b \<times> 'c) kernel" (infixr "(\<Otimes>\<^sub>K)" 90) where
 "kernel_product K_1 K_2 \<equiv> kernel_of (kernel_source K_1) (kernel_target K_1 \<Otimes>\<^sub>M kernel_target K_2)
   (\<lambda>\<omega>\<^sub>0 A. \<integral>\<^sup>+\<omega>\<^sub>1. (\<integral>\<^sup>+\<omega>\<^sub>2. indicator A (\<omega>\<^sub>1, \<omega>\<^sub>2)\<partial>kernel_measure K_2 (\<omega>\<^sub>0, \<omega>\<^sub>1))\<partial>kernel_measure K_1 \<omega>\<^sub>0)"
+text_raw \<open>}%EndSnippet\<close>
 
 lemma kernel_product_source[simp]: "kernel_source (K_1 \<Otimes>\<^sub>K K_2) = kernel_source K_1"
   unfolding kernel_product_def by simp
@@ -14,9 +16,11 @@ lemma kernel_product_source[simp]: "kernel_source (K_1 \<Otimes>\<^sub>K K_2) = 
 lemma kernel_product_target[simp]: "kernel_target (K_1 \<Otimes>\<^sub>K K_2) = (kernel_target K_1 \<Otimes>\<^sub>M kernel_target K_2)"
   unfolding kernel_product_def by simp
 
+text_raw \<open>\DefineSnippet{kernel_product_partial}{\<close>
 definition kernel_product_partial :: "('a, 'b) kernel \<Rightarrow> ('b, 'c) kernel \<Rightarrow> ('a, 'b \<times> 'c) kernel" (infixr "(\<Otimes>\<^sub>P)" 90) where
 "kernel_product_partial K_1 K_2 \<equiv> K_1 \<Otimes>\<^sub>K (kernel_of (kernel_source K_1 \<Otimes>\<^sub>M kernel_source K_2) (kernel_target K_2)
  (\<lambda>\<omega> A\<^sub>2. kernel K_2 (snd \<omega>) A\<^sub>2))"
+text_raw \<open>}%EndSnippet\<close>
 
 lemma kernel_product_partial_source[simp]: "kernel_source (K_1 \<Otimes>\<^sub>P K_2) = kernel_source K_1"
   unfolding kernel_product_partial_def by simp
@@ -70,13 +74,18 @@ lemma
   by (simp add: emeasure_compl finite_measure.emeasure_finite)
 
 text \<open> Required for monotone convergence in the below theorem \<close>
+
+text_raw \<open>\DefineSnippet{kernel_snd_measurable}{\<close>
 lemma kernel_snd_measurable:
   fixes K :: "('a\<times>'b, 'c) kernel"
-  defines "M2 \<equiv> kernel_target K"
-  assumes "A \<in> sets (M1 \<Otimes>\<^sub>M M2)" "sets (kernel_source K) = sets (M0 \<Otimes>\<^sub>M M1)" "\<omega>\<^sub>0 \<in> space M0"
-          "finite_kernel K"
+  assumes A_sets: "A \<in> sets (M1 \<Otimes>\<^sub>M kernel_target K)"
+  and sets_eq: "sets (kernel_source K) = sets (M0 \<Otimes>\<^sub>M M1)"
+  and \<omega>\<^sub>0: "\<omega>\<^sub>0 \<in> space M0"
+  and finite_kernel: "finite_kernel K"
   shows "(\<lambda>w. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) \<in> borel_measurable M1"
+text_raw \<open>}%EndSnippet\<close>
 proof -
+  define M2 where "M2 \<equiv> kernel_target K"
   let ?G = "{x \<times> y | x y. x \<in> sets M1 \<and> y \<in> sets M2}"
   have sigma_G: "sigma_sets (space (M1 \<Otimes>\<^sub>M M2)) ?G = sets (M1 \<Otimes>\<^sub>M M2)"
     by (metis sets_pair_measure space_pair_measure)
@@ -85,7 +94,7 @@ proof -
   moreover have "?G \<subseteq> Pow (space (M1 \<Otimes>\<^sub>M M2))"
     by (simp add: pair_measure_closed space_pair_measure)
   moreover have "A \<in> sigma_sets (space (M1 \<Otimes>\<^sub>M M2)) ?G"
-    by (metis assms(2) sets_pair_measure space_pair_measure)
+    using M2_def A_sets sigma_G by blast
   ultimately show ?thesis
   proof (induct rule: sigma_sets_induct_disjoint)
     case (basic A)
@@ -96,12 +105,12 @@ proof -
     moreover have "w \<notin> x \<Longrightarrow> {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A} = {}" for w
       using xy by blast
     moreover have "(\<lambda>w. kernel K (\<omega>\<^sub>0, w) A') \<in> borel_measurable M1" if "A' \<in> sets M2" for A'
-      using assms that by (measurable, auto)
+      using assms that M2_def by (measurable, auto)
     ultimately show "(\<lambda>w. kernel K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) \<in> borel_measurable M1"
       using xy apply auto
       apply measurable
         apply (smt (verit, ccfv_SIG) M2_def empty_Collect_eq mem_Collect_eq sets.empty_sets subsetI subset_antisym)
-      using assms(3) assms(4) apply force
+      using assms(2,3) apply force
       unfolding pred_def by auto
   next
     case empty
@@ -113,9 +122,9 @@ proof -
       then have space: "{\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> space (M1 \<Otimes>\<^sub>M M2)} = space M2"
         unfolding space_pair_measure by auto
       from w have "(\<omega>\<^sub>0, w) \<in> space (kernel_source K)"
-        by (metis assms(3,4) SigmaI sets_eq_imp_space_eq space_pair_measure)
+        by (metis assms(2,3) SigmaI sets_eq_imp_space_eq space_pair_measure)
       then have "finite_measure (kernel_measure K (\<omega>\<^sub>0, w))"
-        by (simp add: finite_kernel.finite_measures assms(5))
+        by (simp add: finite_kernel.finite_measures finite_kernel)
       then have "kernel_measure K (\<omega>\<^sub>0, w) (space M2 - {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}) = 
           kernel_measure K (\<omega>\<^sub>0, w) (space M2) - kernel_measure K (\<omega>\<^sub>0, w) {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A}"
         unfolding M2_def apply (subst kernel_measure_space[THEN sym])+
@@ -130,8 +139,8 @@ proof -
     have "(\<lambda>w. K (\<omega>\<^sub>0, w) (space M2 - {\<omega>\<^sub>2. (w, \<omega>\<^sub>2) \<in> A})) \<in> borel_measurable M1"
       apply (subst measurable_cong[OF diff])
        apply simp
-      unfolding M2_def using assms(3) apply measurable
-      using assms(4) apply simp
+      unfolding M2_def using sets_eq apply measurable
+      using \<omega>\<^sub>0 apply simp
        apply auto
       using compl by simp
     then show ?case
@@ -144,7 +153,7 @@ proof -
     {
       fix w assume w: "w \<in> space M1"
       then have "(\<omega>\<^sub>0, w) \<in> space (kernel_source K)"
-        using assms(4) sets_eq_imp_space_eq[OF assms(3)] space_pair_measure by blast
+        using \<omega>\<^sub>0 sets_eq_imp_space_eq[OF sets_eq] space_pair_measure by blast
       then have "measure_space (space M2) (sets M2) (kernel K (\<omega>\<^sub>0, w))"
         using kernel.space_source_measure unfolding M2_def by fast
       then have countably_additive: "countably_additive (sets M2) (kernel K (\<omega>\<^sub>0, w))"
@@ -169,14 +178,16 @@ qed
 
 text \<open> Klenke theorem 14.25 \<close>
 
+text_raw \<open>\DefineSnippet{kernel_product_transition_kernel}{\<close>
 theorem kernel_product_transition_kernel:
   fixes K_1 :: "('a, 'b) kernel"
     and K_2 :: "('a\<times>'b, 'c) kernel"
   assumes finite: "finite_kernel K_1" "finite_kernel K_2"
       and eq: "sets (kernel_source K_2) = sets (kernel_source K_1 \<Otimes>\<^sub>M kernel_target K_1)"
-    shows"transition_kernel (kernel_source K_1) (kernel_target K_1 \<Otimes>\<^sub>M kernel_target K_2)
+    shows "transition_kernel (kernel_source K_1) (kernel_target K_1 \<Otimes>\<^sub>M kernel_target K_2)
     (\<lambda>\<omega>\<^sub>0 A. \<integral>\<^sup>+\<omega>\<^sub>1. (\<integral>\<^sup>+\<omega>\<^sub>2. indicator A (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K_2 (\<omega>\<^sub>0, \<omega>\<^sub>1)) \<partial>kernel_measure K_1 \<omega>\<^sub>0)"
   (is "transition_kernel ?\<Omega>\<^sub>1 ?\<Omega>\<^sub>2 ?\<kappa>")
+text_raw \<open>}%EndSnippet\<close>
 proof (intro transition_kernel.intro)
   let ?M0 = "kernel_source K_1"
   and ?M1 = "kernel_target K_1"
@@ -333,7 +344,7 @@ proof -
     using 1 in_space apply blast
     done
 qed
-  
+
 
 lemma kernel_product_sigma_finite:
   assumes finite: "finite_kernel K_1" "finite_kernel K_2"
@@ -497,8 +508,10 @@ lemma semidirect_product_unique:
     done
   done
 
+text_raw \<open>\DefineSnippet{kernel_semidirect_product}{\<close>
 definition kernel_semidirect_product :: "'a measure \<Rightarrow> ('a, 'b) kernel \<Rightarrow> ('a \<times> 'b) measure" (infixr "(\<Otimes>\<^sub>S)" 70)
   where "M \<Otimes>\<^sub>S K = kernel_measure (emeasure_kernel M M \<Otimes>\<^sub>P K) (SOME \<omega>. \<omega> \<in> space (kernel_source K))"
+text_raw \<open>}%EndSnippet\<close>
 
 lemma space_kernel_semidirect_product[simp]: "space (M \<Otimes>\<^sub>S K) = (space M \<times> space (kernel_target K))"
   unfolding kernel_semidirect_product_def by (simp add: space_pair_measure)
@@ -520,22 +533,28 @@ begin
 lemma space_eq: "space (kernel_source K) = space M"
   by (fact sets_eq_imp_space_eq[OF sets_eq])
 
+text_raw \<open>\DefineSnippet{emeasure_semidirect_product}{\<close>
+lemma emeasure_semidirect_product:
+  assumes "A \<in> sets (M \<Otimes>\<^sub>S K)"
+  shows "emeasure (M \<Otimes>\<^sub>S K) A = \<integral>\<^sup>+ \<omega>\<^sub>1. \<integral>\<^sup>+ \<omega>\<^sub>2. indicator A (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1 \<partial>M"
+text_raw \<open>}%EndSnippet\<close>
+  unfolding kernel_semidirect_product_def 
+  apply (subst kernel_measure_emeasure)
+  apply (subst kernel_prod_partial_apply)
+  using emeasure_kernel_finite finite_measure_axioms apply blast
+  using finite_kernel_axioms apply blast
+     apply (simp add: sets_eq)
+    apply (simp add: nonempty some_in_eq space_eq)
+  using assms apply (simp add: sets_kernel_semidirect_product)
+  apply (simp add: nonempty some_in_eq space_eq)
+  done
+
 lemma emeasure_times_semidirect_product: 
   assumes "A \<in> sets M" "B \<in> sets (kernel_target K)"
   shows "emeasure (M \<Otimes>\<^sub>S K) (A \<times> B) = \<integral>\<^sup>+\<omega>\<^sub>1 \<in> A. K \<omega>\<^sub>1 B \<partial>M"
-  unfolding kernel_semidirect_product_def apply (simp add: kernel_measure_emeasure)
-  apply (subst kernel_prod_partial_apply)
-  apply (simp add: emeasure_kernel_finite finite_measure_axioms)
-  apply (simp add: finite_kernel_axioms)
-  using sets_eq apply simp
-  using nonempty apply (simp add: space_eq some_in_eq)
-  using assms(1,2) apply simp
-   apply (simp add: space_eq)
-   apply (subst kernel_measure_emeasure_kernel)
-  using some_in_eq nonempty apply blast
-   apply (rule nn_integral_cong)
-   apply (simp add: indicator_times)
-  apply (simp add: assms(2) kernel_measure_emeasure mult.commute nn_integral_cmult_indicator)
+  apply (subst emeasure_semidirect_product)
+  using assms sets_kernel_semidirect_product apply blast
+  apply (simp add: indicator_times assms(2) kernel_measure_emeasure mult.commute nn_integral_cmult_indicator)
   done
 
 lemma kernel_semidirect_product_finite: "finite_measure (M \<Otimes>\<^sub>S K)"
@@ -547,9 +566,11 @@ lemma kernel_semidirect_product_finite: "finite_measure (M \<Otimes>\<^sub>S K)"
 lemma indicator_diff_ennreal: "indicator (A - B) x = indicator A x * (1 - indicator B x ::ennreal)"
   by (simp add: indicator_def)
 
+text_raw \<open>\DefineSnippet{kernel_Fubini}{\<close>
 lemma kernel_Fubini:
   assumes f[measurable]: "f \<in> borel_measurable (M \<Otimes>\<^sub>M (kernel_target K))"
   shows "(\<integral>\<^sup>+\<omega>. f \<omega> \<partial>(M \<Otimes>\<^sub>S K)) = (\<integral>\<^sup>+\<omega>\<^sub>1. (\<integral>\<^sup>+\<omega>\<^sub>2. f (\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1) \<partial>M)"
+text_raw \<open>}%EndSnippet\<close>
 using f proof induct
   case (cong f g)
   have "integral\<^sup>N (M \<Otimes>\<^sub>S K) f = integral\<^sup>N (M \<Otimes>\<^sub>S K) g"
@@ -562,20 +583,8 @@ using f proof induct
     using cong(4) by argo
 next
   case (set A)
-  then show ?case (* Many trivial goals: clean this up *)
-    apply (subst nn_integral_indicator)
-    using sets_kernel_semidirect_product apply blast
-    unfolding kernel_semidirect_product_def 
-    apply (subst kernel_measure_emeasure)
-    apply (subst kernel_prod_partial_apply)
-    using emeasure_kernel_finite finite_measure_axioms apply blast
-    using finite_kernel_axioms apply blast
-       apply (simp add: sets_eq)
-      apply (simp add: nonempty some_in_eq space_eq)
-     apply simp
-    apply (subst kernel_measure_emeasure_kernel)
-     apply (simp add: nonempty some_in_eq space_eq)
-    ..
+  then show ?case
+    by (simp add: emeasure_semidirect_product sets_kernel_semidirect_product)
 next
   case (mult u v)
   have L: "(\<integral>\<^sup>+ \<omega>. v * u \<omega> \<partial>(M \<Otimes>\<^sub>S K)) = v * (\<integral>\<^sup>+ \<omega>. u \<omega> \<partial>(M \<Otimes>\<^sub>S K))"
