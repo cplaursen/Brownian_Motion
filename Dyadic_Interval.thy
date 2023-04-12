@@ -1,5 +1,5 @@
 theory Dyadic_Interval
-  imports "HOL-Analysis.Analysis" "HOL-Library.Stream"
+  imports "HOL-Analysis.Analysis"
 begin
 
 text \<open> In this file we describe intervals of dyadic numbers {S..T} for reals S T. We use the floor
@@ -13,7 +13,9 @@ lemma frac_ceil: "\<lceil>x\<rceil> = x + frac (- x)"
   unfolding frac_def
   by (smt (verit, del_insts) Ints_of_int ceiling_altdef of_int_1 of_int_add)
 
+text_raw \<open>\DefineSnippet{floor_pow2_lim}{\<close>
 lemma floor_pow2_lim: "(\<lambda>n. \<lfloor>2^n * T\<rfloor> / 2 ^ n) \<longlonglongrightarrow> T"
+text_raw \<open>}%EndSnippet\<close>
 proof (intro LIMSEQ_I)
   fix r :: real assume "r > 0"
   obtain k where k: "1 / 2^k < r"
@@ -43,70 +45,89 @@ qed
 lemma ceil_pow2_geq: "\<lceil>2^n * T\<rceil> / 2 ^ n \<ge> T"
   by (simp add: frac_ceil field_simps)
 
-text \<open> dyadic_interval n T is the collection of dyadic numbers in {S..T} with denominator 2^n. As
- n -> \<infinity> this collection approximates {S..T}. \<close>
+text \<open> dyadic_interval_step_step n S T is the collection of dyadic numbers in {S..T} with denominator 2^n. As
+ n -> \<infinity> this collection approximates {S..T}. Compare with @{thm dyadics_def}}\<close>
 
-thm dyadics_def
+text_raw \<open>\DefineSnippet{dyadic_interval_step}{\<close>
+definition dyadic_interval_step :: "nat \<Rightarrow> real \<Rightarrow> real \<Rightarrow> real set"
+  where "dyadic_interval_step n S T \<equiv> (\<lambda>k. k / (2 ^ n)) ` {\<lceil>2^n * S\<rceil>..\<lfloor>2^n * T\<rfloor>}"
+text_raw \<open>}%EndSnippet\<close>
 
-definition dyadic_interval :: "nat \<Rightarrow> real \<Rightarrow> real \<Rightarrow> real set"
-  where "dyadic_interval n S T \<equiv> (\<lambda>k. k / (2 ^ n)) ` {\<lceil>2^n * S\<rceil>..\<lfloor>2^n * T\<rfloor>}" 
+text_raw \<open>\DefineSnippet{dyadic_interval}{\<close>
+definition dyadic_interval :: "real \<Rightarrow> real \<Rightarrow> real set"
+  where "dyadic_interval S T \<equiv> (\<Union>n. dyadic_interval_step n S T)"
+text_raw \<open>}%EndSnippet\<close>
 
-lemma dyadic_interval_empty[simp]: "T < S \<Longrightarrow> dyadic_interval n S T = {}"
-  unfolding dyadic_interval_def apply simp
-  by (smt (verit) ceil_pow2_geq floor_le_ceiling floor_mono floor_pow2_leq linordered_comm_semiring_strict_class.comm_mult_strict_left_mono zero_less_power)
+lemma dyadic_interval_step_empty[simp]: "T < S \<Longrightarrow> dyadic_interval_step n S T = {}"
+  unfolding dyadic_interval_step_def apply simp
+  by (smt (verit) ceil_pow2_geq floor_le_ceiling floor_mono floor_pow2_leq
+      linordered_comm_semiring_strict_class.comm_mult_strict_left_mono zero_less_power)
 
-lemma dyadic_interval_0[simp]: "dyadic_interval n 0 0 = {0}"
-  unfolding dyadic_interval_def by simp
+lemma dyadic_interval_step_0[simp]: "dyadic_interval_step n 0 0 = {0}"
+  unfolding dyadic_interval_step_def by simp
 
-lemma dyadic_interval_mem:
+lemma dyadic_interval_step_mem:
   assumes"x \<ge> 0" "T \<ge> 0" "x \<le> T" 
-  shows "\<lfloor>2^n * x\<rfloor> / 2 ^ n \<in> dyadic_interval n 0 T"
-  unfolding dyadic_interval_def by (simp add: assms image_iff floor_mono)
+  shows "\<lfloor>2^n * x\<rfloor> / 2 ^ n \<in> dyadic_interval_step n 0 T"
+  unfolding dyadic_interval_step_def by (simp add: assms image_iff floor_mono)
 
-lemma dyadic_interval_iff: "x \<in> dyadic_interval n S T \<longleftrightarrow> (\<exists>k. k \<ge> \<lceil>2^n * S\<rceil> \<and> k \<le> \<lfloor>2^n * T\<rfloor> \<and> x = k/2^n)"
-  unfolding dyadic_interval_def by (auto simp add: image_iff)
+lemma dyadic_interval_step_iff: 
+  "x \<in> dyadic_interval_step n S T \<longleftrightarrow>
+   (\<exists>k. k \<ge> \<lceil>2^n * S\<rceil> \<and> k \<le> \<lfloor>2^n * T\<rfloor> \<and> x = k/2^n)"
+  unfolding dyadic_interval_step_def by (auto simp add: image_iff)
 
-lemma dyadics_leq: "x \<in> dyadic_interval n S T \<Longrightarrow> x \<le> T"
-  unfolding dyadic_interval_def apply clarsimp
+lemma mem_dyadic_interval: "x \<in> dyadic_interval S T \<longleftrightarrow> (\<exists>n. x \<in> dyadic_interval_step n S T)"
+  unfolding dyadic_interval_def by blast
+
+lemma dyadics_leq: "x \<in> dyadic_interval_step n S T \<Longrightarrow> x \<le> T"
+  unfolding dyadic_interval_step_def apply clarsimp
   by (simp add: divide_le_eq le_floor_iff mult.commute)
 
-lemma dyadics_geq: "x \<in> dyadic_interval n S T \<Longrightarrow> x \<ge> S"
-  unfolding dyadic_interval_def apply clarsimp
+lemma dyadics_geq: "x \<in> dyadic_interval_step n S T \<Longrightarrow> x \<ge> S"
+  unfolding dyadic_interval_step_def apply clarsimp
   by (simp add: ceiling_le_iff mult.commute pos_le_divide_eq)
 
-lemma zero_in_dyadics: "T \<ge> 0 \<Longrightarrow> 0 \<in> dyadic_interval n 0 T"
-  using dyadic_interval_def by force
+corollary dyadic_interval_subset_interval: "(dyadic_interval 0 T) \<subseteq> {0..T}"
+  unfolding dyadic_interval_def using dyadics_geq dyadics_leq by force
 
-lemma dyadic_interval_dense: "closure (\<Union>n. dyadic_interval n 0 T) = {0..T}"
+lemma zero_in_dyadics: "T \<ge> 0 \<Longrightarrow> 0 \<in> dyadic_interval_step n 0 T"
+  using dyadic_interval_step_def by force
+
+text_raw \<open>\DefineSnippet{dyadic_interval_dense}{\<close>
+lemma dyadic_interval_dense: "closure (dyadic_interval 0 T) = {0..T}"
+text_raw \<open>}%EndSnippet\<close>
 proof (rule subset_antisym)
-  have "(\<Union>n. dyadic_interval n 0 T) \<subseteq> {0..T}"
-    using dyadics_leq dyadics_geq by force
-  then show "closure (\<Union>n. dyadic_interval n 0 T) \<subseteq> {0..T}"
+  have "(dyadic_interval 0 T) \<subseteq> {0..T}"
+    by (fact dyadic_interval_subset_interval)
+  then show "closure (dyadic_interval 0 T) \<subseteq> {0..T}"
     by (auto simp: closure_minimal)
-  have "{0..T} \<subseteq> closure (\<Union>n. dyadic_interval n 0 T)" if "T \<ge> 0"
+  have "{0..T} \<subseteq> closure (dyadic_interval 0 T)" if "T \<ge> 0"
     unfolding closure_def
   proof (clarsimp)
-    fix x assume x: "0 \<le> x" "x \<le> T" "\<forall>n. x \<notin> dyadic_interval n 0 T"
+    fix x assume x: "0 \<le> x" "x \<le> T" "x \<notin> dyadic_interval 0 T"
     then have "x > 0"
+      unfolding dyadic_interval_def
       using zero_in_dyadics[OF that] order_le_less by blast
-    show "x islimpt (\<Union>n. dyadic_interval n 0 T)"
+    show "x islimpt (dyadic_interval 0 T)"
       apply (simp add: islimpt_sequential)
       apply (rule exI [where x="\<lambda>n. \<lfloor>2^n * x\<rfloor> / 2^n"])
       apply safe
-        using that dyadic_interval_mem x(1,2) apply blast
-        apply (smt (verit) dyadic_interval_mem x)
-        apply (fact floor_pow2_lim)
+      using dyadic_interval_step_mem mem_dyadic_interval x(1,2) apply auto[1]
+       apply (smt (verit, ccfv_threshold) dyadic_interval_step_mem mem_dyadic_interval x)
+      using floor_pow2_lim apply blast
       done
   qed
-  then show "{0..T} \<subseteq> closure (\<Union>n. dyadic_interval n 0 T)"
+  then show "{0..T} \<subseteq> closure (dyadic_interval 0 T)"
     by (cases "T \<ge> 0"; simp)
 qed
 
-lemma dyadic_interval_finite[simp]: "finite (dyadic_interval n S T)"
-  unfolding dyadic_interval_def by simp
+lemma dyadic_interval_step_finite[simp]: "finite (dyadic_interval_step n S T)"
+  unfolding dyadic_interval_step_def by simp
 
-lemma dyadic_interval_countable[simp]: "countable (\<Union>n. dyadic_interval n S T)"
-  by (simp add: dyadic_interval_def)
+text_raw \<open>\DefineSnippet{dyadic_interval_countable}{\<close>
+lemma dyadic_interval_countable[simp]: "countable (dyadic_interval S T)"
+text_raw \<open>}%EndSnippet\<close>
+  by (simp add: dyadic_interval_def dyadic_interval_step_def)
 
 lemma floor_pow2_add_leq:
   fixes T :: real
@@ -153,16 +174,19 @@ corollary floor_pow2_mono: "mono (\<lambda>n. \<lfloor>2^n * (T :: real)\<rfloor
     using floor_pow2_add_leq[of x T "y - x"] by force
   done
 
-lemma dyadic_interval_Max: "T \<ge> 0 \<Longrightarrow> Max (dyadic_interval n 0 T) = \<lfloor>2^n * T\<rfloor> / 2^n"
-  apply (simp add: dyadic_interval_def)
+lemma dyadic_interval_step_Max: "T \<ge> 0 \<Longrightarrow> Max (dyadic_interval_step n 0 T) = \<lfloor>2^n * T\<rfloor> / 2^n"
+  apply (simp add: dyadic_interval_step_def)
   apply (subst mono_Max_commute[of "\<lambda>x. real_of_int x / 2^n", symmetric])
   by (auto simp: mono_def field_simps Max_eq_iff)
 
-lemma dyadic_interval_subset: "n \<le> m \<Longrightarrow> dyadic_interval n 0 T \<subseteq> dyadic_interval m 0 T"
+text_raw \<open>\DefineSnippet{dyadic_interval_step_subset}{\<close>
+lemma dyadic_interval_step_subset:
+  "n \<le> m \<Longrightarrow> dyadic_interval_step n 0 T \<subseteq> dyadic_interval_step m 0 T"
+text_raw \<open>}%EndSnippet\<close>
 proof (rule subsetI)
-  fix x assume "n \<le> m" "x \<in> dyadic_interval n 0 T"
+  fix x assume "n \<le> m" "x \<in> dyadic_interval_step n 0 T"
   then obtain k where k:  "k \<ge> 0" "k \<le> \<lfloor>2^n * T\<rfloor>" "x = k / 2^n"
-    unfolding dyadic_interval_def by fastforce
+    unfolding dyadic_interval_step_def by fastforce
   then have "k * 2 ^ (m - n) \<in> {0 .. \<lfloor>2^m * T\<rfloor>}"
   proof -
     have "k / 2 ^ n \<le> \<lfloor>2^m * T\<rfloor> / 2 ^ m"
@@ -178,14 +202,15 @@ proof (rule subsetI)
     then show "k * 2 ^ (m - n) \<in> {0 .. \<lfloor>2^m * T\<rfloor>}"
       using k(1) by simp
   qed
-  then show "x \<in> dyadic_interval m 0 T"
-    apply (subst dyadic_interval_iff)
+  then show "x \<in> dyadic_interval_step m 0 T"
+    apply (subst dyadic_interval_step_iff)
     apply (rule exI[where x="k * 2 ^ (m - n)"])
     apply simp
     apply (simp add: \<open>n \<le> m\<close> k(3) power_diff)
     done
 qed
 
+(*
 fun dyadic_expansion :: "real \<Rightarrow> nat stream" where
  "dyadic_expansion k =
   (let k' = k * 2 in if k' \<ge> 1 then 1 ## dyadic_expansion (k' - 1) else 0 ## dyadic_expansion k')"
@@ -194,18 +219,18 @@ lemma dyadic_expansion_div_2: "k < 1 \<Longrightarrow> dyadic_expansion (Suc n) 
   oops
 
 lemma dyadic_expansion_interval:
-  assumes "x \<in> dyadic_interval n 0 T"
+  assumes "x \<in> dyadic_interval_step n 0 T"
   shows "of_int \<lfloor>x\<rfloor> + (\<Sum>i\<in>{0..<n}. of_nat (dyadic_expansion n x ! i) / 2 ^ Suc i) = x"
   using assms
 proof (induction n)
   case 0
   then show ?case
-    unfolding dyadic_interval_def
+    unfolding dyadic_interval_step_def
     by auto
 next
   case (Suc n)
   then obtain k where k: "k \<in> {0..\<lfloor>2^Suc n * T\<rfloor>}" "x = k / (2 ^ Suc n)"
-    unfolding dyadic_interval_def by force
+    unfolding dyadic_interval_step_def by force
   consider "even k" | "odd k"
     by auto
   then show ?case
@@ -215,8 +240,8 @@ next
       by (simp add: real_of_int_div k(2))
     moreover have "k div 2 \<in> {0..\<lfloor>2^n * T\<rfloor>}"
       using k(1) by (auto simp add: le_floor_iff)
-    ultimately have "x \<in> dyadic_interval n 0 T"
-      unfolding dyadic_interval_def by force
+    ultimately have "x \<in> dyadic_interval_step n 0 T"
+      unfolding dyadic_interval_step_def by force
     then have "real_of_int \<lfloor>x\<rfloor> + (\<Sum>i = 0..<n. real (dyadic_expansion n x ! i) / 2 ^ Suc i) = x"
       using Suc by blast
     moreover have "dyadic_expansion (Suc n) x ! n = 0"
@@ -228,22 +253,24 @@ next
   qed
 qed
 
+*)
 
-
+text_raw \<open>\DefineSnippet{dyadic_expansion}{\<close>
 lemma dyadic_expansion:
-  assumes "x \<in> dyadic_interval n 0 T" 
+  assumes "x \<in> dyadic_interval_step n 0 T" 
   shows "\<exists>b k. b \<in> {1..n} \<rightarrow>\<^sub>E {0,1} \<and> k \<in> {0..\<lfloor>T\<rfloor>} \<and> x = k + (\<Sum>m\<in>{1..n}. b m / 2 ^ m)"
+text_raw \<open>}%EndSnippet\<close>
   using assms
 proof (induction n arbitrary: x)
   case 0
   then have "x \<in> {0..\<lfloor>T\<rfloor>}"
-    unfolding dyadic_interval_def by auto
+    unfolding dyadic_interval_step_def by auto
   then show ?case
-    using 0 dyadic_interval_iff by simp
+    using 0 dyadic_interval_step_iff by simp
 next
   case (Suc n)
   then obtain k where k: "k \<in> {0..\<lfloor>2 ^ (Suc n) * T\<rfloor>}" "x = k / 2 ^ (Suc n)"
-    unfolding dyadic_interval_def by fastforce
+    unfolding dyadic_interval_step_def by fastforce
   then have div2: "k div 2 \<in> {0..\<lfloor>2 ^ n * T\<rfloor>}"
       using k(1) apply simp
       by (metis divide_le_eq_numeral1(1) floor_divide_of_int_eq floor_mono le_floor_iff mult.assoc mult.commute of_int_numeral)
@@ -252,8 +279,8 @@ next
     case True
     then have "x = k div 2 / 2 ^ n"
       by (simp add: k(2) real_of_int_div)
-    then have "x \<in> dyadic_interval n 0 T"
-      using dyadic_interval_def div2 by force
+    then have "x \<in> dyadic_interval_step n 0 T"
+      using dyadic_interval_step_def div2 by force
     then obtain k' b where kb: "b \<in> {1..n} \<rightarrow>\<^sub>E {0, 1}" "k' \<in> {0..\<lfloor>T\<rfloor>}" "x = real_of_int k' + (\<Sum>m\<in>{1..n}. b m / 2 ^ m)"
       using Suc(1) by blast
     show ?thesis
@@ -271,8 +298,8 @@ next
       by force
     then have "x = k div 2 / 2 ^ n + 1 / 2 ^ (Suc n)"
       by (simp add: k(2) field_simps)
-    then have "x - 1 / 2 ^ (Suc n) \<in> dyadic_interval n 0 T"
-      using div2 by (simp add: dyadic_interval_def)
+    then have "x - 1 / 2 ^ (Suc n) \<in> dyadic_interval_step n 0 T"
+      using div2 by (simp add: dyadic_interval_step_def)
     then obtain k' b where kb: "b \<in> {1..n} \<rightarrow>\<^sub>E {0, 1}" "k' \<in> {0..\<lfloor>T\<rfloor>}" "x - 1/2^Suc n = real_of_int k' + (\<Sum>m\<in>{1..n}. b m / 2 ^ m)"
       using Suc(1)[of "x - 1 / 2 ^ (Suc n)"] by blast
     have x: "x = real_of_int k' + (\<Sum>m\<in>{1..n}. b m / 2 ^ m) + 1/2^Suc n"
