@@ -4,107 +4,62 @@ begin
 
 text \<open> Klenke 5.11: Markov inequality. Compare with @{thm nn_integral_Markov_inequality} \<close>
 
+text_raw \<open>\DefineSnippet{nn_integral_Markov_inequality_extended}{\<close>
 lemma nn_integral_Markov_inequality_extended:
   fixes f :: "real \<Rightarrow> ennreal" and \<epsilon> :: real and X :: "'a \<Rightarrow> real"
   assumes X[measurable]: "X \<in> borel_measurable M"
-      and mono: "mono f"
+      and mono: "mono_on (range X \<union> {0<..}) f"
       and finite: "\<And>x. f x < \<infinity>"
       and e: "\<epsilon> > 0" "f \<epsilon> > 0"
     shows "emeasure M {p \<in> space M. (X p) \<ge> \<epsilon>} \<le> (\<integral>\<^sup>+ x. f (X x) \<partial>M) / f \<epsilon>"
+text_raw \<open>}%EndSnippet\<close>
 proof -
   have f_eq: "f = (\<lambda>x. ennreal (enn2real (f x)))"
     using finite by simp
-  moreover have "mono (\<lambda>x. enn2real (f x))"
-    apply (intro monotoneI)
+  have "mono_on (range X) (\<lambda>x. enn2real (f x))"
+    apply (intro mono_onI)
     apply (subst enn2real_mono)
-    using mono[THEN monotoneD] finite by simp_all
-  ultimately have "(\<lambda>x. f (X x)) \<in> borel_measurable M"
-    apply (intro measurable_compose[where g=f and f=X])
-     apply measurable
-    apply (metis borel_measurable_mono measurable_compose_rev measurable_ennreal)
+    using mono[THEN mono_onD] finite by simp_all
+  then have "f \<in> borel_measurable (restrict_space borel (range X))"
+    apply (subst f_eq)
+    apply (intro measurable_compose[where f="\<lambda>x. enn2real (f x)" and g=ennreal])
+    using borel_measurable_mono_on_fnc apply blast
+    apply simp
+    done
+  then have "(\<lambda>x. f (X x)) \<in> borel_measurable M"
+    apply (intro measurable_compose[where g=f and f=X and N="restrict_space borel (range X)"])
+    using X apply (simp_all add: measurable_restrict_space2)
     done
   then have "{x \<in> space M. f (X x) \<ge> f \<epsilon>} \<in> sets M"
     by measurable
   then have "f \<epsilon> * emeasure M {p \<in> space M. X p \<ge> \<epsilon>} \<le> \<integral>\<^sup>+x\<in>{x \<in> space M. f \<epsilon> \<le> f (X x)}. f \<epsilon> \<partial>M"
     apply (simp add: nn_integral_cmult_indicator)
-    apply (rule mult_left_mono)
-     apply (rule emeasure_mono)
-      apply simp_all
-      using e mono_onD[OF mono] apply auto
+    using e mono_onD[OF mono] zero_le apply (blast intro: mult_left_mono emeasure_mono)
     done
-  also have "... \<le> \<integral>\<^sup>+x\<in>{x \<in> space M. f \<epsilon> \<le> f (X x)}. f (X x)\<partial>M"
+  also have "... \<le> \<integral>\<^sup>+x\<in>{x \<in> space M. f \<epsilon> \<le> f (X x)}. f (X x) \<partial>M"
     apply (rule nn_integral_mono)
     subgoal for x
       apply (cases "f \<epsilon> \<le> f (X x)")
       using ennreal_leI by auto
     done
   also have "... \<le> \<integral>\<^sup>+ x. f (X x) \<partial>M"
-    by (simp add: divide_right_mono_ennreal nn_integral_mono indicator_def)
-  finally show ?thesis
-  proof -
-    assume "f \<epsilon> * emeasure M {p \<in> space M. \<epsilon> \<le> ( (X p))} \<le> \<integral>\<^sup>+ x. (f (X x)) \<partial>M"
-    then have "(f \<epsilon> * emeasure M {p \<in> space M. \<epsilon> \<le> ( (X p))}) / f \<epsilon> \<le> (\<integral>\<^sup>+ x. (f (X x)) \<partial>M) / f \<epsilon>"
-      by (fact divide_right_mono_ennreal)
-    moreover have "(f \<epsilon> * emeasure M {p \<in> space M. \<epsilon> \<le> (X p)}) / f \<epsilon> = emeasure M {p \<in> space M. \<epsilon> \<le> (X p)}"
-    proof -
-      have "(f \<epsilon> * emeasure M {p \<in> space M. \<epsilon> \<le> (X p)}) / f \<epsilon> = emeasure M {p \<in> space M. \<epsilon> \<le> (X p)} * f \<epsilon> / f \<epsilon>"
-        by (simp add: field_simps)
-      also have "... = emeasure M {p \<in> space M. \<epsilon> \<le> (X p)}"
-        by (metis (no_types, lifting) e(2) ennreal_mult_divide_eq infinity_ennreal_def finite order_less_irrefl)
-      finally show ?thesis .
-    qed
-    ultimately show ?thesis
-      by argo
-  qed
+    by (simp add: nn_integral_mono indicator_def)
+  finally have "emeasure M {p \<in> space M. \<epsilon> \<le> X p} * f \<epsilon> / f \<epsilon> \<le> (\<integral>\<^sup>+ x. f (X x) \<partial>M) / f \<epsilon>"
+    by (simp add: divide_right_mono_ennreal field_simps)
+  then show ?thesis
+    using mult_divide_eq_ennreal finite[of "\<epsilon>"] e(2) by simp
 qed
 
 lemma nn_integral_Markov_inequality_rnv:
   fixes f :: "real \<Rightarrow> real" and \<epsilon> :: real and X :: "'a \<Rightarrow> 'b :: real_normed_vector"
-  assumes X[measurable]: "X \<in> borel_measurable M"
+  assumes [measurable]: "X \<in> borel_measurable M"
       and mono: "mono_on {0..} f"
       and e: "\<epsilon> > 0" "f \<epsilon> > 0"
     shows "emeasure M {p \<in> space M. norm (X p) \<ge> \<epsilon>} \<le> (\<integral>\<^sup>+ x. f (norm (X x)) \<partial>M) / f \<epsilon>"
-proof -
-  have "(\<lambda>x. f (norm (X x))) \<in> borel_measurable M"
-    apply (rule measurable_compose[of "\<lambda>x. norm (X x)" M "restrict_space borel {0..}"])
-     apply (subst measurable_restrict_space2_iff)
-     apply auto[1]
-    apply (fact borel_measurable_mono_on_fnc[OF mono])
-    done
-  then have "{x \<in> space M. f (norm (X x)) \<ge> f \<epsilon>} \<in> sets M"
-    by measurable
-  then have "f \<epsilon> * emeasure M {p \<in> space M. norm (X p) \<ge> \<epsilon>} \<le> \<integral>\<^sup>+x\<in>{x \<in> space M. f \<epsilon> \<le> f (norm (X x))}. f \<epsilon> \<partial>M"
-    apply (simp add: nn_integral_cmult_indicator)
-    apply (rule mult_left_mono)
-     apply (rule emeasure_mono)
-      apply simp_all
-      using e mono_onD[OF mono] apply auto
-    done
-  also have "... \<le> \<integral>\<^sup>+x\<in>{x \<in> space M. f \<epsilon> \<le> f (norm (X x))}. f (norm (X x))\<partial>M"
-    apply (rule nn_integral_mono)
-    subgoal for x
-      apply (cases "f \<epsilon> \<le> f (norm (X x))")
-      using ennreal_leI by auto
-    done
-  also have "... \<le> \<integral>\<^sup>+ x. f (norm (X x)) \<partial>M"
-    by (simp add: divide_right_mono_ennreal nn_integral_mono indicator_def)
-  finally show ?thesis
-  proof -
-    assume "f \<epsilon> * emeasure M {p \<in> space M. \<epsilon> \<le> (norm (X p))} \<le> \<integral>\<^sup>+ x. (f (norm (X x))) \<partial>M"
-    then have "(f \<epsilon> * emeasure M {p \<in> space M. \<epsilon> \<le> (norm (X p))}) / f \<epsilon> \<le> (\<integral>\<^sup>+ x. (f (norm (X x))) \<partial>M) / f \<epsilon>"
-      by (fact divide_right_mono_ennreal)
-    moreover have "(f \<epsilon> * emeasure M {p \<in> space M. \<epsilon> \<le> (norm (X p))}) / f \<epsilon> = emeasure M {p \<in> space M. \<epsilon> \<le> (norm (X p))}"
-    proof -
-      have "(f \<epsilon> * emeasure M {p \<in> space M. \<epsilon> \<le> (norm (X p))}) / f \<epsilon> = emeasure M {p \<in> space M. \<epsilon> \<le> (norm (X p))} * f \<epsilon> / f \<epsilon>"
-        by (simp add: field_simps)
-      also have "... = emeasure M {p \<in> space M. \<epsilon> \<le> (norm (X p))}"
-        using e(2) ennreal_mult_divide_eq by force
-      finally show ?thesis .
-    qed
-    ultimately show ?thesis
-      by argo
-  qed
-qed
+  apply (rule nn_integral_Markov_inequality_extended)
+     prefer 2 using mono ennreal_leI unfolding mono_on_def apply force
+     apply (simp_all add: e)
+  done
 
 lemma Max_finite_image_ex:
   assumes "finite S" "S \<noteq> {}" "P (MAX k\<in>S. f k)" 
@@ -125,6 +80,7 @@ lemma Union_add_subset: "(m :: nat) \<le> n \<Longrightarrow> (\<Union>k. A (k +
 
 lemma floor_in_Nats: "x \<ge> 0 \<Longrightarrow> \<lfloor>x\<rfloor> \<in> \<nat>"
   by (metis nat_0_le of_nat_in_Nats zero_le_floor)
+ 
 
 text \<open> Klenke 21.6 - Kolmorogov-Chentsov\<close>
 
@@ -132,7 +88,7 @@ text_raw \<open>\DefineSnippet{holder_continuous_modification}{\<close>
 theorem holder_continuous_modification:
   fixes X :: "(real, 'a, 'b :: polish_space) stochastic_process"
   assumes index[simp]: "proc_index X = {0..}"
-      and target_borel[measurable, simp]: "proc_target X = borel"
+      and target_borel[simp]: "proc_target X = borel"
       and gt_0: "a > 0" "b > 0" "C > 0"
       and "b \<le> a" (* Probably follows from other assms *)
       and gamma: "\<gamma> \<in> {0<..<b/a}"
@@ -142,6 +98,8 @@ theorem holder_continuous_modification:
 text_raw \<open>}%EndSnippet\<close>
 proof -
   let ?M = "proc_source X"
+  have [measurable]: "X t \<in> borel_measurable ?M" for t
+    by (metis random_process target_borel)
   have "0 < \<gamma>" "\<gamma> < 1"
     using gamma apply simp
     by (metis assms(6) divide_le_eq_1_pos gamma greaterThanLessThan_iff gt_0(1) order_less_le_trans)
@@ -156,12 +114,9 @@ proof -
      \<le> integral\<^sup>N ?M ?inc / \<epsilon> powr a"
       apply (rule nn_integral_Markov_inequality_extended)
       using that(1,2) apply measurable
-        apply (metis random_process target_borel)
-          apply (metis random_process target_borel)
-         apply (intro monoI)
-         apply (subst ennreal_le_iff2)
-         apply auto
-      sorry
+      using gt_0(1) imageE powr_mono2 apply (auto intro: mono_onI)[1]
+      using that apply simp_all
+      done
     also have "... \<le> (C * dist t s powr (1 + b)) / ennreal (\<epsilon> powr a)"
       apply (rule divide_right_mono_ennreal)
       using expectation[OF that(1,2)] ennreal_leI by simp
@@ -243,7 +198,6 @@ proof -
        apply simp
       apply (simp only: if_False)
         apply measurable
-        apply (metis random_process target_borel)+
       done
     have "emeasure ?M (A n) \<le> ennreal (C * T * 2 powr (real_of_int (- int n) * (b - a * \<gamma>)))"
       if [simp]: "2^n * T \<ge> 1" for n
@@ -270,8 +224,7 @@ proof -
           using in_space by simp
       next
         show "?R \<in> sets ?M"
-          apply measurable
-          by (smt (verit) target_borel random_process)+
+          by measurable
       qed
       also have "... \<le> (\<Sum>k\<in>{1..\<lfloor>2^n * T\<rfloor>}. emeasure ?M 
     {x\<in>space ?M. dist (X (real_of_int (k - 1) * 2 powr - real n) x) (X (real_of_int k * 2 powr - real n) x) \<ge> 2 powr (- \<gamma> * real n)})"
@@ -280,7 +233,6 @@ proof -
         apply (subst image_subset_iff)
         apply (intro ballI)
         apply measurable
-         apply (metis random_process target_borel)+
         done
       also have "... \<le> C * 2 powr (- n * (1 + b - a * \<gamma>)) * (card {1..\<lfloor>2 ^ n * T\<rfloor>})"
       proof -
@@ -553,7 +505,6 @@ proof -
     qed
     moreover have X_tilde_measurable: "X_tilde t \<in> borel_measurable ?M" if "t \<in> {0..T}" for t
       unfolding X_tilde_def apply measurable
-         apply (metis random_process target_borel)
         defer
       using sets.sets_Collect_const apply blast
        apply auto[1]
@@ -563,7 +514,8 @@ proof -
       apply (intro modificationI)
       unfolding compatible_def apply safe
            apply (simp_all add: proc_source.prob_space_axioms)
-      by (metis restrict_index_source)
+      apply (metis restrict_index_source)
+      done
     then have "\<exists>Y. modification (restrict_index X {0..T}) Y \<and> (\<forall>x \<in> space ?M. local_holder_on \<gamma> {0..T} (\<lambda>t. process Y t x))"
       apply (intro exI[where x="(process_of ?M (proc_target X) {0..T} X_tilde default)"])
       apply safe
