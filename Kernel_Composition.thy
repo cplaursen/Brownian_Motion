@@ -90,11 +90,10 @@ text \<open> Theorem 14.29 \<close>
 theorem kernel_comp_prod:
   fixes K\<^sub>1 :: "('a, 'b) kernel" and K\<^sub>2 :: "('b, 'c) kernel"
   assumes substochastic: "substochastic_kernel K\<^sub>1" "substochastic_kernel K\<^sub>2"
-  and "A\<^sub>2 \<in> sets (kernel_target K\<^sub>2)" "sets (kernel_source K\<^sub>2) = sets (kernel_target K\<^sub>1)"
- (* Could remove the A\<^sub>2 \<in> sets assumption since they both go to 0 otherwise *)
+  and  "A\<^sub>2 \<in> sets (kernel_target K\<^sub>2)" "sets (kernel_source K\<^sub>2) = sets (kernel_target K\<^sub>1)"
   shows "kernel (K\<^sub>1 \<circ>\<^sub>K K\<^sub>2) \<omega>\<^sub>0 A\<^sub>2 = kernel (K\<^sub>1 \<Otimes>\<^sub>P K\<^sub>2) \<omega>\<^sub>0 (space (kernel_target K\<^sub>1) \<times> A\<^sub>2)"
   apply (cases "\<omega>\<^sub>0 \<in> space (kernel_source K\<^sub>1)")
-  apply (subst kernel_comp_kernel)
+   apply (subst kernel_comp_kernel)
   using assms apply blast
   using substochastic substochastic_kernel.axioms(1) apply auto[1]
   apply (subst kernel_prod_partial_apply)
@@ -107,20 +106,32 @@ theorem kernel_comp_prod:
   using assms substochastic_kernel.axioms(1) apply blast+
   done
 
-text \<open> Lemma 14.30 \<close>
+text \<open> Lemma 14.30 \<close> (* Klenke's proof is "This is trivial" *)
 lemma kernel_comp_convolution:
-  assumes "prob_space M" "prob_space N" "\<omega> \<in> space M" 
-  assumes [measurable_cong]: "sets N = sets borel" "sets M = sets N"
+  assumes [simp]: "prob_space M" "prob_space N" "\<omega> \<in> space M" 
+  assumes [measurable_cong]: "sets N = sets borel" "sets M = sets borel"
   defines "K\<^sub>1 \<equiv> kernel_of M M (\<lambda>x dy. M dy)"
   and "K\<^sub>2 \<equiv> kernel_of M M (\<lambda>y dz. ((return M y) \<star> N) dz)" 
-shows "kernel (K\<^sub>1 \<circ>\<^sub>K K\<^sub>2) \<omega> = emeasure (M \<star> N)"
+shows "kernel (K\<^sub>1 \<circ>\<^sub>K K\<^sub>2) \<omega> = emeasure (M \<star> N)" (* FIXME: clean up proof *)
 proof -
   have K1: "kernel K\<^sub>1 x A' = M A'" if "x \<in> space M \<and> A' \<in> sets M" for A' x
     unfolding K\<^sub>1_def
     by (metis that emeasure_transition_kernel kernel_apply_kernel_of)
   have K1_measure: "kernel_measure K\<^sub>1 \<omega> = M"
-    unfolding kernel_measure_def K\<^sub>1_def apply auto
-    by (smt (verit, del_insts) K1 K\<^sub>1_def assms(3) kernel.transition_kernel_axioms kernel_measure.rep_eq kernel_measure_kernel_of measure_of_of_measure source_kernel_of target_kernel_of transition_kernel_cong)
+    apply (rule measure_eqI)
+    by (simp_all add: K\<^sub>1_def emeasure_transition_kernel kernel_measure_emeasure)
+  have [measurable]: "{x. x + a \<in> A'} \<in> sets N" if "a \<in> space N" "A' \<in> sets N" for a A'
+    using that by measurable
+  then have *[measurable]: "(\<lambda>a. emeasure N {x. x + a \<in> A'}) \<in> borel_measurable M"
+    if "A' \<in> sets N" for A'
+    apply (subst sigma_finite_measure.measurable_emeasure)
+    using assms(2) prob_space_imp_sigma_finite apply blast
+    apply measurable
+       apply (metis assms(4) assms(5) sets_eq_imp_space_eq)
+    using that apply force
+     apply measurable
+     apply simp_all
+    using assms(4) borel_measurable_add pred_sets2 that by blast
   have K2: "kernel K\<^sub>2 x A' = ((return M x) \<star> N) A'" if "x \<in> space M" for A' x
     unfolding K\<^sub>2_def
     apply (cases "A' \<in> sets M")
@@ -129,15 +140,22 @@ proof -
     apply (subst kernel_apply_kernel_of)
     using that kernel_apply_kernel_of apply auto
     apply (rule transition_kernelI)
-    sorry
-  have "(\<lambda>x. emeasure N A') \<in> borel_measurable N" if "A' \<in> sets N" for A'
-    unfolding measurable_def by auto
-  moreover have "{a. a + x \<in> A'} \<in> sets N" if "A' \<in> sets N" for A' x
-    using that apply measurable
-    unfolding pred_def using that assms(4) sorry
-  ultimately have *: "(\<lambda>x. emeasure N {a. a + x \<in> A'}) \<in> borel_measurable N" if "A' \<in> sets N" for A'
-    using that sorry
-  have int_eq: "(\<integral>\<^sup>+ x. emeasure (return M x \<star> N) A' \<partial>M) = (emeasure (M \<star> N) A')" if "A' \<in> sets M" for A'
+     apply (subst convolution_emeasure)
+    using assms apply argo
+           apply (smt (verit) assms UNIV_I prob_space.finite_measure prob_space_return sets_eq_imp_space_eq space_borel)
+    using assms(2) prob_space_def apply fastforce
+    using assms apply blast
+    using assms apply auto[1]
+    apply (smt (verit, ccfv_SIG) assms(4) assms(5) sets_eq_imp_space_eq sets_return)
+    using assms(4)[THEN sets_eq_imp_space_eq] apply argo
+    subgoal for A'a (* bad name *)
+      apply (subst measurable_cong[where g="\<lambda>x. emeasure N {a. a + x \<in> A'a}"])
+      apply (rule nn_integral_return)
+        apply argo
+      using assms by auto
+    apply (smt (verit, ccfv_threshold) assms(4) assms(5) measure_space sets_convolution sets_eq_imp_space_eq space_convolution)
+    done
+  have int_eq: "(\<integral>\<^sup>+ x. emeasure (return M x \<star> N) A' \<partial>M) = (emeasure (M \<star> N) A')" if "A' \<in> sets N" for A'
     apply (subst convolution_emeasure)
            apply (simp_all add: that assms)
     using assms(4) assms(5) that apply blast
@@ -147,10 +165,9 @@ proof -
      apply (simp add: assms(4) sets_eq_imp_space_eq)
     apply (subst nn_integral_return)
       apply (simp add: assms(4) assms(5) sets_eq_imp_space_eq)
-    using assms that apply measurable
-     defer
-     apply (metis assms(1) assms(2) assms(4) assms(5) convolution_emeasure prob_space.finite_measure sets_eq_imp_space_eq that)
-    using * that assms(5) by simp
+    using that apply measurable
+    apply (metis assms(1) assms(2) assms(4) assms(5) convolution_emeasure prob_space.finite_measure sets_eq_imp_space_eq that)
+    done
   show ?thesis
   apply (subst kernel_comp_kernel)
   using K\<^sub>1_def K\<^sub>2_def apply simp
@@ -163,11 +180,10 @@ proof -
     apply (subst nn_integral_cong[of M "\<lambda>x. (kernel K\<^sub>2 x A')" "(\<lambda>x. ((return M x) \<star> N) A')"])
     using K2 apply blast
     apply (cases "A' \<in> sets M")
-    using int_eq apply blast
+    using int_eq assms(4) assms(5) apply blast
      apply (smt (verit, best) assms(4) assms(5) emeasure_neq_0_sets mult_zero_left nn_integral_cong nn_integral_const sets_convolution)
     done
   done
 qed
-
 
 end
