@@ -1,5 +1,5 @@
 theory Kernel
-  imports "HOL-Probability.Probability" "Eisbach_Tools.Apply_Trace_Cmd"
+  imports "HOL-Probability.Probability"
 begin
 
 section \<open> Kernel type \<close>
@@ -15,6 +15,7 @@ text \<open> A stochastic transition kernel can be understood as the generalisat
   distribution over possible future state. Indeed, when restricted to a countable state space the
   two definitions coincide. \<close>
 
+text_raw \<open>\DefineSnippet{transition_kernel}{\<close>
 locale transition_kernel =
   fixes M :: "'a measure"
     and M' :: "'b measure"
@@ -22,6 +23,7 @@ locale transition_kernel =
   assumes
     sets_target_measurable [measurable]: "\<And>A'. A' \<in> sets M' \<Longrightarrow> (\<lambda>\<omega>. \<kappa> \<omega> A') \<in> M \<rightarrow>\<^sub>M borel" and
     space_source_measure: "\<And>\<omega>. \<omega> \<in> space M \<Longrightarrow> measure_space (space M') (sets M') (\<lambda>A'. \<kappa> \<omega> A')"
+text_raw \<open>}%EndSnippet\<close>
 
 lemma transition_kernelI [intro]:
   assumes "\<And>A'. A' \<in> sets M' \<Longrightarrow> (\<lambda>\<omega>. \<kappa> \<omega> A') \<in> M \<rightarrow>\<^sub>M borel"
@@ -80,21 +82,51 @@ qed
 
 text \<open> Klenke remark 8.26 \<close>
 lemma kernel_measurable_pi_system:
-  assumes "\<And>A'. A' \<in> P \<Longrightarrow> (\<lambda>\<omega>. \<kappa> \<omega> A') \<in> M \<rightarrow>\<^sub>M borel" "Int_stable P" "sigma_sets (space M') P = sets M'" "space M' \<in> P"
-  shows "\<And>A'. A' \<in> sets M' \<Longrightarrow> (\<lambda>\<omega>. \<kappa> \<omega> A') \<in> M \<rightarrow>\<^sub>M borel"
+  assumes measurable_P[measurable]: "\<And>A'. A' \<in> P \<Longrightarrow> (\<lambda>\<omega>. \<kappa> \<omega> A') \<in> M \<rightarrow>\<^sub>M borel" and
+    P: "Int_stable P" "space M' \<in> P" "sigma_sets (space M') P = sets M'" and
+    measure_space: "\<And>\<omega>. \<omega> \<in> space M \<Longrightarrow> measure_space (space M') (sets M') (\<lambda>A'. \<kappa> \<omega> A')"
+  shows "transition_kernel M M' \<kappa>"
 proof -
-  have D: "Dynkin_system (space M') {A' \<in> sets M'. (\<lambda>\<omega>. \<kappa> \<omega> A') \<in> M \<rightarrow>\<^sub>M borel}"
-  proof (intro Dynkin_systemI)
+  have "\<And>A'. A' \<in> sets M' \<Longrightarrow> (\<lambda>\<omega>. \<kappa> \<omega> A') \<in> M \<rightarrow>\<^sub>M borel"
+  proof -
+    fix A' assume A': "A' \<in> sets M'"
+  have "P \<subseteq> Pow (space M')"
+    using P(3) sets.space_closed by blast
+  moreover have "A' \<in> sigma_sets (space M') P"
+    using P(3) A' by blast
+  with P(1) calculation
+  have "(\<lambda>\<omega>. \<kappa> \<omega> A') \<in> M \<rightarrow>\<^sub>M borel"
+  proof (induct rule: sigma_sets_induct_disjoint)
+    case (basic A)
+    then show ?case by simp
+  next
+    case empty
+    then show ?case
+      apply (subst measurable_cong[where g="\<lambda>x. 0"])
+      using measure_space apply (simp add: Sigma_Algebra.positive_def measure_space_def)
+      apply simp
+      done
+  next
+    case (compl A)
+    then show ?case
+      sorry (* K \<omega> A needs to be finite for this to hold, it seems *)
+  next
+    case (union A)
+    then show ?case sorry
+  qed
     oops (* Doesn't seem obvious at all *)
 
 text \<open> The boilerplate definitions for the kernel type follow closely those of the measure type
    @{typ "'a measure"}\<close>
 
+text_raw \<open>\DefineSnippet{kernel}{\<close>
 typedef ('a, 'b) kernel =
   "{(M :: 'a measure, M' :: 'b measure, \<kappa>). 
     transition_kernel M M' \<kappa> \<and> (\<forall>\<omega>. \<forall>A'. \<omega> \<in> -space M \<or> A' \<in> -sets M' \<longrightarrow> \<kappa> \<omega> A' = 0)}"
+text_raw \<open>}%EndSnippet\<close>
   using transition_kernel_zero by blast
 
+term "distr"
 setup_lifting type_definition_kernel
 
 lift_definition kernel_source :: "('a, 'b) kernel \<Rightarrow> 'a measure" is fst .
@@ -157,8 +189,10 @@ lemma from_hkernel_kernel_of_inverse [simp]:
   "from_hkernel (hkernel (kernel_of M M \<kappa>)) = (kernel_of M M \<kappa>)"
   by (simp add: hkernel_inverse)
 
+text_raw \<open>\DefineSnippet{kernel_measure}{\<close>
 lift_definition kernel_measure :: "('a, 'b) kernel \<Rightarrow> 'a \<Rightarrow> 'b measure" is
-"\<lambda>(M, M', \<kappa>) \<omega>. measure_of (space M') (sets M') (\<lambda>A'. \<kappa> \<omega> A')" .
+"\<lambda>(M, M', \<kappa>) \<omega>. measure_of (space M') (sets M') (\<lambda>A'. \<kappa> \<omega> A')"
+text_raw \<open>}%EndSnippet\<close> .
 
 lemma kernel_measure_altdef:
   "kernel_measure K \<omega> = measure_of (space (kernel_target K)) (sets (kernel_target K)) (\<lambda>A'. K \<omega> A')"
@@ -283,13 +317,15 @@ lemma kernel_of_cong:
 
 text \<open> Klenke lemma 14.23 \<close>
 
+text_raw \<open>\DefineSnippet{kernel_measure_pair_integral_measurable}{\<close>
 lemma kernel_measure_pair_integral_measurable [measurable]:
   fixes f :: "'a \<times> 'b \<Rightarrow> ennreal"
     and K :: "('a, 'b) kernel"
   assumes f_measurable[measurable]: "f \<in> borel_measurable (kernel_source K \<Otimes>\<^sub>M kernel_target K)"
-      and finite_K: "finite_kernel K"              
+      and finite_K: "finite_kernel K"
   defines "I \<equiv> \<lambda> f. (\<lambda>\<omega>\<^sub>1. \<integral>\<^sup>+\<omega>\<^sub>2. f(\<omega>\<^sub>1, \<omega>\<^sub>2) \<partial>kernel_measure K \<omega>\<^sub>1)"
   shows "I f \<in> borel_measurable (kernel_source K)"
+text_raw \<open>}%EndSnippet\<close>
 proof -
   let ?\<Omega>\<^sub>1 = "space (kernel_source K)" and ?\<Omega>\<^sub>2 = "space (kernel_target K)"
   and ?A\<^sub>1 = "sets (kernel_source K)"  and ?A\<^sub>2 = "sets (kernel_target K)"
@@ -421,19 +457,20 @@ proof -
     then show "I g \<in> borel_measurable (kernel_source K)"
       by (metis (no_types, lifting) measurable_cong indicator_repr)
   qed
-  obtain f' where f': "incseq f' \<and> (\<forall>i. (\<forall>x. f' i x < top) \<and> simple_function (kernel_source K \<Otimes>\<^sub>M kernel_target K) (f' i)) \<and> f = (SUP i. f' i)"
+  obtain f' where f': "incseq f'" "f = (SUP i. f' i)"
+    "\<And>i. simple_function (kernel_source K \<Otimes>\<^sub>M kernel_target K) (f' i)"
     using borel_measurable_implies_simple_function_sequence[OF f_measurable] by blast
-  then have "\<And>\<omega>\<^sub>1. \<omega>\<^sub>1 \<in> ?\<Omega>\<^sub>1 \<Longrightarrow> I f \<omega>\<^sub>1 = (SUP i. I (f' i) \<omega>\<^sub>1)"
+  have "\<And>\<omega>\<^sub>1. \<omega>\<^sub>1 \<in> ?\<Omega>\<^sub>1 \<Longrightarrow> I f \<omega>\<^sub>1 = (SUP i. I (f' i) \<omega>\<^sub>1)"
     unfolding I_def
-    apply (subst nn_integral_monotone_convergence_SUP[THEN sym])
-    using mono_compose apply blast
-    apply (smt (verit, best) borel_measurable_simple_function kernel_measure_sets measurable_Pair2 measurable_cong measurable_cong_sets)
-    apply (metis SUP_apply)
+    apply (subst nn_integral_monotone_convergence_SUP[symmetric])
+    using mono_compose[OF f'(1)] apply blast
+    apply (metis borel_measurable_simple_function f'(3) measurable_Pair2 measurable_kernel_measure)
+    apply (metis SUP_apply f'(2))
     done
   moreover have "(\<lambda>\<omega>\<^sub>1. (SUP i. I (f' i) \<omega>\<^sub>1)) \<in> borel_measurable (kernel_source K)"
-    by (measurable, simp add: f')
+    by (measurable, simp add: f'(2, 3))
   ultimately show ?thesis
-    using measurable_cong by force
+    using measurable_cong[where g="\<lambda>\<omega>. (\<Squnion>i. I (f' i) \<omega>)"] by blast
 qed
 
 corollary kernel_measure_integral_measurable[measurable]:
@@ -457,25 +494,16 @@ section \<open> Kernel examples \<close>
 
 text \<open> Adapted from Bauer, p. 305-307 \<close>
 
-theorem indicator_kernel: "transition_kernel M M (\<lambda>\<omega> A. indicator A \<omega>)"
-proof unfold_locales
-  fix A' assume "A' \<in> sets M"
-  then show "indicator A' \<in> borel_measurable M"
-    by measurable
-next
-  fix \<omega> assume "\<omega> \<in> space M"
-  then show "measure_space (space M) (sets M) (\<lambda>A'. indicator A' \<omega>)"
-    unfolding measure_space_def apply auto
-    apply (simp add: sets.sigma_algebra_axioms)
-     apply (simp add: Sigma_Algebra.positive_def)
-    unfolding countably_additive_def
-    by (auto simp: suminf_indicator)
-qed
-
 (* Dirac delta *)
 theorem return_kernel[simp]: "transition_kernel M M (return M)"
   apply (rule transition_kernelI)
   by (force, metis measure_space sets_return space_return)
+
+lemma "stochastic_kernel (kernel_of M M (return M))"
+  apply (intro stochastic_kernelI)
+  apply (simp add: kernel_measure_kernel_of)
+  apply (metis measure_of_of_measure prob_space_return sets_return space_return)
+  done
 
 text \<open> The emeasure kernel is a kernel that ignores its first argument. \<close>
 lemma emeasure_transition_kernel: "transition_kernel M M' (\<lambda>\<omega> A. emeasure M' A)"
@@ -524,25 +552,20 @@ lemma emeasure_kernel_substochastic:
   "subprob_space M' \<Longrightarrow> substochastic_kernel (emeasure_kernel M M')"
   using substochastic_kernelI by force
 
-lemma
-  fixes \<pi> :: "nat \<Rightarrow> nat \<Rightarrow> ennreal"
-  shows "transition_kernel (count_space UNIV) (count_space UNIV) (\<lambda>i A. \<Sum>j \<in> A. \<pi> i j)"
-  apply (unfold_locales)
-  using borel_measurable_count_space apply blast
-  unfolding measure_space_def apply auto
-    apply (metis Pow_UNIV sigma_algebra_Pow)
-   apply (simp add: Sigma_Algebra.positive_def)
-  apply (auto simp add: countably_additive_def)
-  sorry (* prove that sums on naturals are countably additive *)
-
-
-definition nat_set_to_seq :: "nat set \<Rightarrow> (nat \<Rightarrow> nat)" where
-"nat_set_to_seq N = (\<lambda>n. indicator N n * n)"
-
-(*
-lemma
-  assumes "disjoint_family (A :: nat \<Rightarrow> nat set)"
-  shows "suminf (\<lambda>i. (nat_set_to_seq (A i))) = suminf (nat_set_to_seq (\<Union>i. A i))"*)
-
+lemma discrete_transition_kernel:
+  fixes K :: "'a \<Rightarrow> 'b \<Rightarrow> ennreal"
+  assumes "finite \<Omega>\<^sub>2"
+  shows "transition_kernel (sigma \<Omega>\<^sub>1 (Pow \<Omega>\<^sub>1)) (sigma \<Omega>\<^sub>2 (Pow \<Omega>\<^sub>2)) (\<lambda>\<omega>. sum (K \<omega>))"
+proof (intro transition_kernelI; clarsimp)
+  have "additive (Pow \<Omega>\<^sub>2) (sum (K \<omega>))" for \<omega>
+    unfolding additive_def by (metis PowD assms finite_subset sum.union_disjoint)
+  then have "countably_additive (Pow \<Omega>\<^sub>2) (sum (K \<omega>))" for \<omega>
+    apply (intro ring_of_sets.countably_additiveI_finite)
+    using assms Sigma_Algebra.positive_def ring_of_sets_Pow sum.empty by blast+
+  then show "measure_space \<Omega>\<^sub>2 (sigma_sets \<Omega>\<^sub>2 (Pow \<Omega>\<^sub>2)) (sum (K \<omega>))" for \<omega>
+    by (simp add: Sigma_Algebra.positive_def measure_space_def sigma_algebra.sigma_sets_eq sigma_algebra_Pow)
+  show "(\<lambda>\<omega>. sum (K \<omega>) A') \<in> borel_measurable (sigma \<Omega>\<^sub>1 (Pow \<Omega>\<^sub>1))" for A'
+    unfolding measurable_def by auto
+qed
 
 end
