@@ -67,12 +67,6 @@ proof -
   qed
 qed
 
-lemma
-  assumes "finite_measure M" "A \<in> sets M"
-  shows "M (space M - A) = M (space M) - M A"
-  using assms
-  by (simp add: emeasure_compl finite_measure.emeasure_finite)
-
 text \<open> Required for monotone convergence in the below theorem \<close>
 
 text_raw \<open>\DefineSnippet{kernel_snd_measurable}{\<close>
@@ -345,7 +339,6 @@ proof -
     done
 qed
 
-
 lemma kernel_product_sigma_finite:
   assumes finite: "finite_kernel K_1" "finite_kernel K_2"
       and eq: "sets (kernel_source K_2) = sets (kernel_source K_1 \<Otimes>\<^sub>M kernel_target K_1)"
@@ -411,7 +404,6 @@ proof -
     by (metis (mono_tags, lifting) infinity_ennreal_def kernel_measure_sets kernel_measure_space kernel_product_source kernel_product_target)
 qed
 
-
 lemma kernel_product_stochastic:    
   assumes stochastic: "stochastic_kernel K_1" "stochastic_kernel K_2"
       and eq: "sets (kernel_source K_2) = sets (kernel_source K_1 \<Otimes>\<^sub>M kernel_target K_1)"
@@ -443,7 +435,7 @@ lemma kernel_product_substochastic:
   assumes substochastic: "substochastic_kernel K_1" "substochastic_kernel K_2"
       and eq: "sets (kernel_source K_2) = sets (kernel_source K_1 \<Otimes>\<^sub>M kernel_target K_1)"
       and nonempty: "space (kernel_target K_1 \<Otimes>\<^sub>M kernel_target K_2) \<noteq> {}" 
-        (* Could remove assumption with changes to substochastic locale *)
+        (* Could remove nonempty assumption with changes to substochastic locale *)
     shows "substochastic_kernel (K_1 \<Otimes>\<^sub>K K_2)"
 proof (rule substochastic_kernelI)
   fix \<omega> assume *: "\<omega> \<in> space (kernel_source (K_1 \<Otimes>\<^sub>K K_2))"
@@ -471,6 +463,16 @@ proof (rule substochastic_kernelI)
   finally show "subprob_space (kernel_measure (K_1 \<Otimes>\<^sub>K K_2) \<omega>)"
     by (auto intro: subprob_spaceI simp: kernel_measure_emeasure nonempty)
 qed
+
+lemma kernel_product_partial_stochastic:
+  assumes "stochastic_kernel K\<^sub>1" "stochastic_kernel K\<^sub>2"
+    and "sets (kernel_target K\<^sub>1) = sets (kernel_source K\<^sub>2)"
+  shows "stochastic_kernel (K\<^sub>1 \<Otimes>\<^sub>P K\<^sub>2)"
+  unfolding kernel_product_partial_def
+  apply (intro kernel_product_stochastic)
+    apply (fact assms(1))
+   apply (intro stochastic_kernelI)
+  sorry
 
 section \<open> Kernel semidirect product \<close>
 
@@ -557,12 +559,6 @@ lemma emeasure_times_semidirect_product:
   apply (simp add: indicator_times assms(2) kernel_measure_emeasure mult.commute nn_integral_cmult_indicator)
   done
 
-lemma kernel_semidirect_product_finite: "finite_measure (M \<Otimes>\<^sub>S K)"
-  apply (intro finite_measureI)
-  apply (simp add: space_pair_measure)
-  apply (subst emeasure_times_semidirect_product; simp)
-  oops
-
 lemma indicator_diff_ennreal: "indicator (A - B) x = indicator A x * (1 - indicator B x ::ennreal)"
   by (simp add: indicator_def)
 
@@ -647,6 +643,18 @@ qed
 end
 
 text \<open> Klenke Corollary 14.27 \<close>
+
+primrec list_kernel_aux :: "'a hkernel list \<Rightarrow> 'a list \<Rightarrow> 'a \<Rightarrow> 'a list set \<Rightarrow> ennreal" where
+"list_kernel_aux [] \<omega> _ A' = indicator A' \<omega>" |
+"list_kernel_aux (k#ks) \<omega> \<omega>\<^sub>0 A' = \<integral>\<^sup>+\<omega>\<^sub>1. list_kernel_aux ks (\<omega>\<^sub>1#\<omega>) \<omega>\<^sub>1 A'\<partial>kernel_measure k \<omega>\<^sub>0"
+
+definition list_sigma :: "'a measure list \<Rightarrow> 'a list measure" where
+"list_sigma M = sigma (listset (map space M)) {l. \<forall>k < length M. (\<lambda>l'. l'!k) ` l \<in> sets (M!k)}"
+
+definition list_kernel :: "'a hkernel list \<Rightarrow> ('a, 'a list) kernel" where
+"list_kernel ks \<equiv> kernel_of (kernel_source (hd ks)) (list_sigma (map kernel_target ks))
+  (list_kernel_aux ks [])"
+
 (*
 corollary kernel_finite_product:
   assumes "\<forall>i \<in> {1..(n::nat)}. sets (kernel_source (K (i - 1))) = sets (M (i - 1)) \<and> sets (kernel_target (K i)) = sets (M i) \<and> stochastic_kernel (K i)"
