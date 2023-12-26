@@ -28,10 +28,7 @@ proof
 next
   fix \<omega> assume "\<omega> \<in> space (kernel_source K\<^sub>1)"
   then show "measure_space (space (kernel_target K\<^sub>2)) (sets (kernel_target K\<^sub>2)) (\<lambda>A'. \<integral>\<^sup>+ \<omega>\<^sub>1. kernel K\<^sub>2 \<omega>\<^sub>1 A' \<partial>kernel_measure K\<^sub>1 \<omega>)"
-    apply (auto simp: measure_space_def)
-      apply (simp add: sets.sigma_algebra_axioms)
-     apply (simp add: Sigma_Algebra.positive_def)
-    unfolding countably_additive_def apply auto
+    apply (auto simp: measure_space_def sets.sigma_algebra_axioms Sigma_Algebra.positive_def countably_additive_def)
     apply (subst nn_integral_suminf[THEN sym])
      apply (metis (full_types) UNIV_I assms(1) kernel.sets_target_measurable kernel_measure_sets measurable_cong_sets sets_range)
     apply (rule nn_integral_cong)
@@ -59,12 +56,12 @@ proof (rule substochastic_kernelI)
   fix \<omega> assume \<omega>: "\<omega> \<in> space (kernel_source (K\<^sub>1 \<circ>\<^sub>K K\<^sub>2))"
   then have "emeasure (kernel_measure (K\<^sub>1 \<circ>\<^sub>K K\<^sub>2) \<omega>) (space (kernel_target K\<^sub>2)) = 
                 \<integral>\<^sup>+ \<omega>\<^sub>1. kernel K\<^sub>2 \<omega>\<^sub>1 (space (kernel_target K\<^sub>2)) \<partial>kernel_measure K\<^sub>1 \<omega>"
-    by (simp add: assms(1,2) kernel_comp_kernel kernel_measure_emeasure substochastic_kernel.axioms(1))
+    by (simp add: assms(1,2) kernel_comp_kernel substochastic_kernel.axioms(1))
   also have "(\<integral>\<^sup>+ \<omega>\<^sub>1. kernel K\<^sub>2 \<omega>\<^sub>1 (space (kernel_target K\<^sub>2)) \<partial>kernel_measure K\<^sub>1 \<omega>) \<le> (\<integral>\<^sup>+ \<omega>\<^sub>1. 1 \<partial>kernel_measure K\<^sub>1 \<omega>)"
     apply (rule nn_integral_mono)
     by (simp add: assms(3) substochastic_kernel.kernel_leq_1)
   also have "... \<le> 1"
-    by (simp add: assms(2) kernel_measure_emeasure substochastic_kernel.kernel_leq_1)
+    by (simp add: assms(2) substochastic_kernel.kernel_leq_1)
   finally show "subprob_space (kernel_measure (K\<^sub>1 \<circ>\<^sub>K K\<^sub>2) \<omega>)"
     by (metis Orderings.order_eq_iff \<omega> assms empty_iff kernel_measure_space sets_eq_imp_space_eq 
         source_kernel_comp subprob_space.subprob_not_empty subprob_spaceI subset_eq substochastic_kernel.subprob_measures target_kernel_comp)
@@ -119,7 +116,7 @@ proof -
     by (metis that emeasure_transition_kernel kernel_apply_kernel_of)
   have K1_measure: "kernel_measure K\<^sub>1 \<omega> = M"
     apply (rule measure_eqI)
-    by (simp_all add: K\<^sub>1_def emeasure_transition_kernel kernel_measure_emeasure)
+    by (simp_all add: K\<^sub>1_def emeasure_transition_kernel)
   have [measurable]: "{x. x + a \<in> A'} \<in> sets N" if "a \<in> space N" "A' \<in> sets N" for a A'
     using that by measurable
   then have *[measurable]: "(\<lambda>a. emeasure N {x. x + a \<in> A'}) \<in> borel_measurable M"
@@ -138,8 +135,8 @@ proof -
     apply auto defer
     apply (simp add: assms(4) assms(5) emeasure_notin_sets)
     apply (subst kernel_apply_kernel_of)
-    using that kernel_apply_kernel_of apply auto
-    apply (rule transition_kernelI)
+    using that apply auto
+    apply (rule transition_kernel.intro)
      apply (subst convolution_emeasure)
     using assms apply argo
            apply (smt (verit) assms UNIV_I prob_space.finite_measure prob_space_return sets_eq_imp_space_eq space_borel)
@@ -160,7 +157,7 @@ proof -
            apply (simp_all add: that assms)
     using assms(4) assms(5) that apply blast
         apply (simp add: assms(4) assms(5) prob_space.finite_measure prob_space_return sets_eq_imp_space_eq)
-       apply (simp add: assms(2) prob_space.finite_measure)
+       apply (simp add: prob_space.finite_measure)
       apply (simp add: assms(4) assms(5) sets_eq_imp_space_eq)
      apply (simp add: assms(4) sets_eq_imp_space_eq)
     apply (subst nn_integral_return)

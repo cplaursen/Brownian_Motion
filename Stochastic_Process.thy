@@ -2,6 +2,20 @@ theory Stochastic_Process
   imports "HOL-Probability.Probability" "Dyadic_Interval"
 begin
 
+lemma (in product_prob_space) indep_vars_PiM_coordinate:
+  "I \<noteq> {} \<Longrightarrow> prob_space.indep_vars (\<Pi>\<^sub>M i\<in>I. M i) M (\<lambda>x f. f x) I"
+proof (simp add: indep_vars_iff_distr_eq_PiM')
+  assume "I \<noteq> {}"
+  have "distr (Pi\<^sub>M I M) (Pi\<^sub>M I M) (\<lambda>x. restrict x I) = distr (Pi\<^sub>M I M) (Pi\<^sub>M I M) (\<lambda>x. x)"
+    by (rule distr_cong; simp add: space_PiM)
+  also have "... = PiM I M"
+    by simp
+  also have "... = Pi\<^sub>M I (\<lambda>i. distr (Pi\<^sub>M I M) (M i) (\<lambda>f. f i))"
+    using PiM_component by (intro PiM_cong, auto)
+  finally show "distr (Pi\<^sub>M I M) (Pi\<^sub>M I M) (\<lambda>x. restrict x I) = Pi\<^sub>M I (\<lambda>i. distr (Pi\<^sub>M I M) (M i) (\<lambda>f. f i))"
+    .
+qed
+
 text \<open> A stochastic process is an indexed collection of random variables. For compatibility with 
   product_prob_space we don't mention the index set I in the assumptions. \<close>
 
@@ -61,27 +75,31 @@ text \<open> Here we construct a process on a given index set. For this we need 
   functions for indices outside the index set; we use the constant function, but it needs to point at
   an element of the target set to be measurable. \<close>
 
-lift_definition process_of :: "'a measure \<Rightarrow> 'b measure \<Rightarrow> 't set \<Rightarrow> ('t \<Rightarrow> 'a \<Rightarrow> 'b) \<Rightarrow> 'b \<Rightarrow> ('t,'a,'b) stochastic_process"
-  is "\<lambda> M M' I X \<omega>. if (\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M') \<and> prob_space M \<and> \<omega> \<in> space M'
+context prob_space
+begin
+
+lift_definition process_of :: "'b measure \<Rightarrow> 't set \<Rightarrow> ('t \<Rightarrow> 'a \<Rightarrow> 'b) \<Rightarrow> 'b \<Rightarrow> ('t,'a,'b) stochastic_process"
+  is "\<lambda> M' I X \<omega>. if (\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M') \<and> \<omega> \<in> space M'
   then (M, M', I, (\<lambda>t. if t \<in> I then X t else (\<lambda>_. \<omega>)))
   else (return (sigma UNIV {{}, UNIV}) (SOME x. True), sigma UNIV UNIV, I, \<lambda>_ _. \<omega>)"
-  by (simp add: prob_space.stochastic_processI prob_space_return)
+  by (simp add: stochastic_processI prob_space_return prob_space.stochastic_processI)
 
-lemma index_process_of[simp]: "proc_index (process_of M M' I X \<omega>) = I"
+lemma index_process_of[simp]: "proc_index (process_of M' I X \<omega>) = I"
   by (transfer, auto)
 
 lemma
-  assumes "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "prob_space M" "\<omega> \<in> space M'"
+  assumes "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "\<omega> \<in> space M'"
   shows
-    source_process_of[simp]: "proc_source (process_of M M' I X \<omega>) = M" and
-    target_process_of[simp]: "proc_target (process_of M M' I X \<omega>) = M'" and
-    process_process_of[simp]: "process (process_of M M' I X \<omega>) = (\<lambda>t. if t \<in> I then X t else (\<lambda>_. \<omega>))"
+    source_process_of[simp]: "proc_source (process_of M' I X \<omega>) = M" and
+    target_process_of[simp]: "proc_target (process_of M' I X \<omega>) = M'" and
+    process_process_of[simp]: "process (process_of M' I X \<omega>) = (\<lambda>t. if t \<in> I then X t else (\<lambda>_. \<omega>))"
   using assms by (transfer, auto)+
 
 lemma process_of_apply:
-  assumes "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "prob_space M" "\<omega> \<in> space M'" "t \<in> I"
-  shows "process (process_of M M' I X \<omega>) t = X t"
+  assumes "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "\<omega> \<in> space M'" "t \<in> I"
+  shows "process (process_of M' I X \<omega>) t = X t"
   using assms by (meson process_process_of)
+end
 
 text \<open> We define the finite-dimensional distributions of our process. \<close>
 
@@ -183,89 +201,89 @@ lemma (in prob_space) indep_vars_indep_var:
 
 text \<open> For all sorted lists of indices, the increments specified by this list are independent \<close>
 
-
 text_raw \<open>\DefineSnippet{indep_increments}{\<close>
-definition (in prob_space) "indep_increments M' X I \<longleftrightarrow>
+lift_definition indep_increments :: "('t :: linorder, 'a, 'b :: minus) stochastic_process \<Rightarrow> bool" is
+"\<lambda>(M, M', I, X).
   (\<forall>l. set l \<subseteq> I \<and> sorted l \<and> length l \<ge> 2 \<longrightarrow>
-     indep_vars (\<lambda>_. M') (\<lambda>k v. X (l!k) v - X (l!(k-1)) v) {1..<length l})"
+     prob_space.indep_vars M (\<lambda>_. M') (\<lambda>k v. X (l!k) v - X (l!(k-1)) v) {1..<length l})" .
 text_raw \<open>}%EndSnippet\<close>
 
-lemma (in prob_space) indep_incrementsE:
-  assumes "indep_increments M' X I"
-      and "set l \<subseteq> I \<and> sorted l \<and> length l \<ge> 2"
-    shows "indep_vars (\<lambda>_. M') (\<lambda>k v. X (l!k) v - X (l!(k-1)) v) {1..<length l}"
-  using assms unfolding indep_increments_def by blast
+lemma indep_incrementsE:
+  assumes "indep_increments X"
+      and "set l \<subseteq> proc_index X \<and> sorted l \<and> length l \<ge> 2"
+    shows "prob_space.indep_vars (proc_source X) (\<lambda>_. proc_target X)
+         (\<lambda>k v. X (l!k) v - X (l!(k-1)) v) {1..<length l}"
+  using assms by (transfer, auto)
 
-lemma (in prob_space) indep_incrementsI:
-  assumes "\<And>l. set l \<subseteq> I \<Longrightarrow> sorted l \<Longrightarrow> length l \<ge> 2 \<Longrightarrow>
-   indep_vars (\<lambda>_. M') (\<lambda>k v. X (l!k) v - X (l!(k-1)) v) {1..<length l}"
-  shows "indep_increments M' X I"
-  unfolding indep_increments_def using assms by blast
+lemma indep_incrementsI:
+  assumes "\<And>l. set l \<subseteq> proc_index X \<Longrightarrow> sorted l \<Longrightarrow> length l \<ge> 2 \<Longrightarrow>
+   prob_space.indep_vars (proc_source X) (\<lambda>_. proc_target X) (\<lambda>k v. X (l!k) v - X (l!(k-1)) v) {1..<length l}"
+  shows "indep_increments X"
+  using assms by (transfer, auto)
 
-lemma (in prob_space) indep_increments_indep_var:
-  assumes "indep_increments M' X I" "h \<in> I" "j \<in> I" "k \<in> I" "h \<le> j" "j \<le> k"
-  shows "indep_var M' (\<lambda>v. X j v - X h v) M' (\<lambda>v. X k v - X j v)"
+lemma indep_increments_indep_var:
+  assumes "indep_increments X" "h \<in> proc_index X" "j \<in> proc_index X" "k \<in> proc_index X" "h \<le> j" "j \<le> k"
+  shows "prob_space.indep_var (proc_source X) (proc_target X) (\<lambda>v. X j v - X h v) (proc_target X) (\<lambda>v. X k v - X j v)"
 proof -
   let ?l = "[h,j,k]"
-  have l: "set ?l \<subseteq> I \<and> sorted ?l \<and> 2 \<le> length ?l"
+  have "set ?l \<subseteq> proc_index X \<and> sorted ?l \<and> 2 \<le> length ?l"
     using assms by auto
-  have 1: "indep_vars (\<lambda>_. M') (\<lambda>k v. X (?l!k) v - X (?l!(k-1)) v) {1..<length ?l}"
-    by (fact indep_incrementsE[OF assms(1) l])
-  have 2: "1 \<in> {1..<length ?l}"
+  then have "prob_space.indep_vars (proc_source X) (\<lambda>_. proc_target X) (\<lambda>k v. X (?l!k) v - X (?l!(k-1)) v) {1..<length ?l}"
+    by (rule indep_incrementsE[OF assms(1)])
+  moreover have "1 \<in> {1..<length ?l}"
     by simp
-  have 3: "2 \<in> {1..<length ?l}"
+  moreover have "2 \<in> {1..<length ?l}"
     by simp
-  have 4: "(1 :: nat) \<noteq> 2"
+  moreover have "(1 :: nat) \<noteq> 2"
     by simp
-  from indep_vars_indep_var[OF 1 2 3 4] show "indep_var M' (\<lambda>v. X j v - X h v) M' (\<lambda>v. X k v - X j v)"
-    by simp
+  ultimately show ?thesis
+    using proc_source.indep_vars_indep_var by fastforce
 qed
 
 text_raw \<open>\DefineSnippet{stationary_increments}{\<close>
-definition (in prob_space) "stationary_increments M' X \<longleftrightarrow>
-(\<forall>t1 t2 k. t1 > 0 \<and> t2 > 0 \<and> k > 0 \<longrightarrow> 
-     distr M M' (\<lambda>v. X (t1 + k) v - X t1 v) = distr M M' (\<lambda>v. X (t2 + k) v - X t2 v))"
+definition "stationary_increments X \<longleftrightarrow> (\<forall>t1 t2 k. t1 > 0 \<and> t2 > 0 \<and> k > 0 \<longrightarrow> 
+     distr (proc_source X) (proc_target X) (\<lambda>v. X (t1 + k) v - X t1 v) =
+     distr (proc_source X) (proc_target X) (\<lambda>v. X (t2 + k) v - X t2 v))"
 text_raw \<open>}%EndSnippet\<close>
 
 text \<open> Processes on the same source measure space, with the same index space, but not necessarily the same
   target measure since we only care about the measurable target space, not the measure \<close>
 
 text_raw \<open>\DefineSnippet{compatible}{\<close>
-definition compatible :: "('t,'a,'b) stochastic_process \<Rightarrow> ('t,'a,'b) stochastic_process \<Rightarrow> bool" where
-"compatible X Y \<longleftrightarrow> proc_source X = proc_source Y \<and> sets (proc_target X) = sets (proc_target Y)
-  \<and> proc_index X = proc_index Y"
+lift_definition compatible :: "('t,'a,'b) stochastic_process \<Rightarrow> ('t,'a,'b) stochastic_process \<Rightarrow> bool"
+is "\<lambda>(Mx, M'x, Ix, X) (My, M'y, Iy, _). Mx = My \<and> sets M'x = sets M'y \<and> Ix = Iy" .
 text_raw \<open>}%EndSnippet\<close>
 
 lemma compatibleI:
   assumes "proc_source X = proc_source Y" "sets (proc_target X) = sets (proc_target Y)"
           "proc_index X = proc_index Y"
   shows "compatible X Y"
-  unfolding compatible_def using assms by simp
+  using assms by (transfer, auto)
 
 lemma
   assumes "compatible X Y"
   shows
-    compatible_source: "proc_source X = proc_source Y" and
-    compatible_target: "sets (proc_target X) = sets (proc_target Y)" and
-    compatible_index: "proc_index X = proc_index Y"
-  using assms unfolding compatible_def by blast+
+    compatible_source [simp]: "proc_source X = proc_source Y" and
+    compatible_target [simp]: "sets (proc_target X) = sets (proc_target Y)" and
+    compatible_index [simp]: "proc_index X = proc_index Y"
+  using assms by (transfer, auto)+
 
 lemma compatible_refl [simp]: "compatible X X"
-  unfolding compatible_def by blast
+  by (transfer, auto)
 
 lemma compatible_sym: "compatible X Y \<Longrightarrow> compatible Y X"
-  unfolding compatible_def by argo
+  by (transfer, auto)
 
 lemma compatible_trans:
   assumes "compatible X Y" "compatible Y Z"
-    shows "compatible X Z"
-  using assms unfolding compatible_def by argo
+  shows "compatible X Z"
+  using assms by (transfer, auto)
 
-lemma compatible_process_of:
+lemma (in prob_space) compatible_process_of:
   assumes measurable: "\<forall>t \<in> I. X t \<in> M \<rightarrow>\<^sub>M M'" "\<forall>t \<in> I. Y t \<in> M \<rightarrow>\<^sub>M M'" 
-      and "prob_space M" "a \<in> space M'" "b \<in> space M'"
-  shows "compatible (process_of M M' I X a) (process_of M M' I Y b)"
-  unfolding compatible_def using assms by force
+      and "a \<in> space M'" "b \<in> space M'"
+  shows "compatible (process_of M' I X a) (process_of M' I Y b)"
+  using assms by (transfer, auto)
 
 text_raw \<open>\DefineSnippet{modification}{\<close>
 definition modification :: "('t,'a,'b) stochastic_process \<Rightarrow> ('t,'a,'b) stochastic_process \<Rightarrow> bool" where
@@ -285,12 +303,12 @@ lemma modificationD:
 
 lemma modification_null_set:
   assumes "modification X Y" "t \<in> proc_index X"
-  obtains N where "{x \<in> space (proc_source X). X t x \<noteq> Y t x} \<subseteq> N \<and> N \<in> null_sets (proc_source X)"
+  obtains N where "{x \<in> space (proc_source X). X t x \<noteq> Y t x} \<subseteq> N" "N \<in> null_sets (proc_source X)"
 proof -
   from assms have "AE x in proc_source X. X t x = Y t x"
-    by (simp add: modificationD(2))
+    by (rule modificationD(2))
   then have "\<exists>N\<in>null_sets (proc_source X). {x \<in> space (proc_source X). X t x \<noteq> Y t x} \<subseteq> N"
-    by (subst eventually_ae_filter[symmetric])
+    by (simp add: eventually_ae_filter)
   then show ?thesis
     using that by blast
 qed
@@ -329,10 +347,24 @@ proof (intro modificationI, safe)
     using XY by fastforce
 qed
 
+lemma modification_imp_identical_distributions:
+  assumes "modification X Y" "T \<subseteq> proc_index X"
+  shows "distributions X T = distributions Y T"
+  unfolding distributions_altdef
+  apply (rule PiM_cong)
+   apply simp
+  apply (rule distr_cong_AE)
+  using assms(1) compatible_source modificationD(1) apply auto[1]
+  using assms(1) compatible_target modificationD(1) apply blast
+    apply (metis assms modificationD(2) subset_eq)
+   apply simp
+  using assms(1) modificationD(1) apply simp
+  done
+
 text_raw \<open>\DefineSnippet{indistinguishable}{\<close>
 definition indistinguishable :: "('t,'a,'b) stochastic_process \<Rightarrow> ('t,'a,'b) stochastic_process \<Rightarrow> bool" where
-"indistinguishable X Y \<longleftrightarrow> compatible X Y \<and> (\<exists>N \<in> null_sets (proc_source X).
-  \<forall>t \<in> proc_index X. {x \<in> space (proc_source X). X t x \<noteq> Y t x} \<subseteq> N)"
+"indistinguishable X Y \<longleftrightarrow> compatible X Y \<and>
+ (\<exists>N \<in> null_sets (proc_source X). \<forall>t \<in> proc_index X. {x \<in> space (proc_source X). X t x \<noteq> Y t x} \<subseteq> N)"
 text_raw \<open>}%EndSnippet\<close>
 
 lemma indistinguishableI:
@@ -357,9 +389,7 @@ lemma indistinguishableD:
 lemma indistinguishable_eq_AE:
   assumes "indistinguishable X Y"
   shows "AE x in proc_source X. \<forall>t \<in> proc_index X. X t x = Y t x"
-  apply (simp add: eventually_ae_filter)
-  using indistinguishableD(2)[OF assms]
-  by (smt (verit, del_insts) mem_Collect_eq subset_eq)
+  using assms[THEN indistinguishableD(2)] by (auto simp add: eventually_ae_filter)
 
 lemma indistinguishable_null_ex:
   assumes "indistinguishable X Y"
@@ -370,11 +400,10 @@ lemma indistinguishable_refl [simp]: "indistinguishable X X"
   by (auto intro: indistinguishableI)
 
 lemma indistinguishable_sym: "indistinguishable X Y \<Longrightarrow> indistinguishable Y X"
-  apply (intro indistinguishableI)
-  using compatible_sym indistinguishable_def apply blast
+  unfolding indistinguishable_def apply (simp add: compatible_sym)
   by (smt (verit, ccfv_SIG) Collect_cong compatible_index compatible_source indistinguishable_def)
 
-lemma indistinguishable_trans: 
+lemma indistinguishable_trans:
   assumes "indistinguishable X Y" "indistinguishable Y Z" 
   shows "indistinguishable X Z"
 proof (intro indistinguishableI)
@@ -389,12 +418,18 @@ proof (intro indistinguishableI)
     by (fact indistinguishable_eq_AE[OF assms(2)])
   ultimately have "AE x in proc_source X. \<forall>t \<in> proc_index X. X t x = Z t x"
     using assms by fastforce
-  then obtain N where "N\<in>null_sets (proc_source X)" "{x \<in> space (proc_source X).\<exists>t\<in>proc_index X. process X t x \<noteq> process Z t x} \<subseteq> N"
-    using eventually_ae_filter[of]
-    by (smt (verit) Collect_cong eventually_ae_filter)
+  then obtain N where "N \<in> null_sets (proc_source X)" 
+    "{x \<in> space (proc_source X).\<exists>t\<in>proc_index X. process X t x \<noteq> process Z t x} \<subseteq> N"
+    using eventually_ae_filter by (smt (verit) Collect_cong eventually_ae_filter)
   then show "\<exists>N\<in>null_sets (proc_source X). \<forall>t\<in>proc_index X. {x \<in> space (proc_source X). process X t x \<noteq> process Z t x} \<subseteq> N"
     by blast
 qed
+
+lemma indistinguishable_modification: "indistinguishable X Y \<Longrightarrow> modification X Y"
+  apply (intro modificationI)
+   apply (erule indistinguishableD(1))
+   apply (drule indistinguishableD(2))
+   using eventually_ae_filter by blast
 
 text \<open> Klenke 21.5(i) \<close>
 
@@ -423,9 +458,7 @@ proof (rule indistinguishableI)
     by blast
 qed
 
-(* definition "right_continuous_on s f \<equiv> \<forall>x \<in> s. continuous (at x within {x<..} \<inter> s) f" *)
-
-text \<open> Klenke 21.5(ii). His statement is more general - we reduce right continuity to regular continuity \<close>
+text \<open> Klenke 21.5(ii). The textbook statement is more general - we reduce right continuity to regular continuity \<close>
 
 text_raw \<open>\DefineSnippet{modification_continuous_indistinguishable}{\<close>
 lemma modification_continuous_indistinguishable:
@@ -499,7 +532,6 @@ proof (rule indistinguishableI)
     then show "p \<in> \<Union> (N ` ?I)"
       by simp
   qed
-  thm N_subset
   have null: "(space (proc_source X) - R) \<union> (\<Union>r \<in> ?I. S r) \<in> null_sets (proc_source X)"
     apply (rule null_sets.Un)
      apply (smt (verit) R(2,3) AE_iff_null_sets proc_source.prob_compl proc_source.prob_eq_0 sets.Diff sets.top)
@@ -531,7 +563,7 @@ lemma restrict_index_override[simp]: "restrict_index (restrict_index X T) S = re
 lemma compatible_restrict_index:
   assumes "compatible X Y"
   shows "compatible (restrict_index X S) (restrict_index Y S)"
-  using assms unfolding compatible_def by auto
+  using assms unfolding compatible_def by (transfer, auto)
 
 lemma modification_restrict_index:
   assumes "modification X Y" "S \<subseteq> proc_index X"
@@ -546,18 +578,22 @@ lemma indistinguishable_restrict_index:
   shows "indistinguishable (restrict_index X S) (restrict_index Y S)"
   using assms unfolding indistinguishable_def by (auto simp: compatible_restrict_index)
 
-lemma modification_imp_identical_distributions:
-  assumes "modification X Y" "T \<subseteq> proc_index X"
-  shows "distributions X T = distributions Y T"
-  unfolding distributions_altdef
-  apply (rule PiM_cong)
-   apply simp
-  apply (rule distr_cong_AE)
-  using assms(1) compatible_source modificationD(1) apply auto[1]
-  using assms(1) compatible_target modificationD(1) apply blast
-    apply (metis assms modificationD(2) subset_eq)
-   apply simp
-  using assms(1) modificationD(1) apply simp
-  done
+lemma modification_indep_increments:
+  assumes "modification X Y"
+  shows "indep_increments X \<Longrightarrow> indep_increments Y"
+proof (intro indep_incrementsI)
+  assume "indep_increments X"
+  fix l assume l: "set l \<subseteq> proc_index Y" "sorted l" "2 \<le> length l"
+  then have "prob_space.indep_vars (proc_source X) (\<lambda>_. proc_target X)
+   (\<lambda>k v. process X (l ! k) v - process X (l ! (k - 1)) v) {1..<length l}"
+    using \<open>indep_increments X\<close>[THEN indep_incrementsE]
+          assms[THEN modificationD(1), THEN compatible_index] by blast
+  then show "prob_space.indep_vars (proc_source Y) (\<lambda>_. proc_target Y)
+   (\<lambda>k v. process Y (l ! k) v - process Y (l ! (k - 1)) v) {1..<length l}"
+    apply (simp add: proc_source.indep_vars_def)
+    apply safe
+    defer
+    sorry
+qed
 
 end

@@ -8,12 +8,16 @@ definition holder_at_within :: "real \<Rightarrow> 'a set \<Rightarrow> 'a \<Rig
 "holder_at_within \<gamma> D r \<phi> \<equiv> \<gamma> \<in> {0<..1} \<and> 
   (\<exists>\<epsilon> > 0. \<exists>C \<ge> 0. \<forall>s \<in> D. dist r s < \<epsilon> \<longrightarrow> dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>)"
 
+text_raw \<open>\DefineSnippet{local_holder_on}{\<close>
 definition local_holder_on :: "real \<Rightarrow> 'a :: metric_space set \<Rightarrow> ('a \<Rightarrow> 'b :: metric_space) \<Rightarrow> bool" where
 "local_holder_on \<gamma> D \<phi> \<equiv> \<gamma> \<in> {0<..1} \<and>
   (\<forall>t\<in>D. \<exists>\<epsilon> > 0. \<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist s t < \<epsilon> \<and> dist r t < \<epsilon> \<longrightarrow> dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
+text_raw \<open>}%\EndSnippet\<close>
 
+text_raw \<open>\DefineSnippet{holder_on}{\<close>
 definition holder_on :: "real \<Rightarrow> 'a :: metric_space set \<Rightarrow> ('a \<Rightarrow> 'b :: metric_space) \<Rightarrow> bool" ("_-holder'_on" 1000) where
 "\<gamma>-holder_on D \<phi> \<longleftrightarrow> \<gamma> \<in> {0<..1} \<and> (\<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
+text_raw \<open>}%\EndSnippet\<close>
 
 lemma holder_onI:
   assumes "\<gamma> \<in> {0<..1}" "\<exists>C \<ge> 0. (\<forall>r\<in>D. \<forall>s\<in>D. dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>)"
@@ -154,10 +158,12 @@ lemma powr_mono_le1:
   shows "g \<le> 1 \<Longrightarrow> h \<le> g \<Longrightarrow> h > 0 \<Longrightarrow> x \<le> 1 \<Longrightarrow> x \<ge> 0 \<Longrightarrow> x powr g \<le> x powr h"
   unfolding powr_def by (simp add: mult_right_mono_neg)
 
+text_raw \<open>\DefineSnippet{local_holder_refine}{\<close>
 lemma local_holder_refine:
   assumes g: "local_holder_on g D \<phi>" "g \<le> 1" 
      and  h: "h \<le> g" "h > 0"
    shows "local_holder_on h D \<phi>"
+text_raw \<open>}%EndSnippet\<close>
 proof -
   {
     fix t assume t: "t \<in> D"
@@ -187,9 +193,11 @@ proof -
     unfolding local_holder_on_leq_def using assms by force
 qed
 
+text_raw \<open>\DefineSnippet{holder_uniform_continuous}{\<close>
 lemma holder_uniform_continuous:
   assumes "\<gamma>-holder_on X \<phi>"
   shows "uniformly_continuous_on X \<phi>"
+text_raw \<open>}%EndSnippet\<close>
   unfolding uniformly_continuous_on_def
 proof safe
   fix e::real
@@ -208,7 +216,7 @@ proof safe
       using assms holder_on_def by blast+
     assume "dist r s < (e/C) powr (1 / \<gamma>)"
     then have "C * dist r s powr \<gamma> < C * ((e/C) powr (1 / \<gamma>)) powr \<gamma>" if "dist (\<phi> r) (\<phi> s) > 0"
-      using holder_neq_0 C(1) powr_less_mono2 gamma by force
+      using holder_neq_0 C(1) powr_less_mono2 gamma by fastforce
     also have "... = e"
       using C(1) gamma \<open>0 < e\<close> powr_powr by auto
     finally have "dist (\<phi> r) (\<phi> s) < e"
@@ -221,14 +229,16 @@ qed
 corollary holder_on_continuous_on: "\<gamma>-holder_on X \<phi> \<Longrightarrow> continuous_on X \<phi>"
   using holder_uniform_continuous uniformly_continuous_imp_continuous by blast
 
+text_raw \<open>\DefineSnippet{holder_implies_local_holder}{\<close>
 lemma holder_implies_local_holder: "\<gamma>-holder_on D \<phi> \<Longrightarrow> local_holder_on \<gamma> D \<phi>"
+text_raw \<open>}%EndSnippet\<close>
   apply (cases "D = {}")
    apply (simp add: holder_on_def local_holder_on_def)
    apply (simp add: local_holder_on_altdef holder_on_def)
   apply (metis IntD1 inf.commute)
-  done    
+  done
 
-lemma local_holder_continuous:
+lemma local_holder_imp_continuous:
   assumes local_holder: "local_holder_on \<gamma> X \<phi>"
   shows "continuous_on X \<phi>"
   unfolding continuous_on_def
@@ -251,10 +261,11 @@ proof safe
     by fastforce
 qed
 
+text_raw \<open>\DefineSnippet{local_holder_compact_imp_holder}{\<close>
 lemma local_holder_compact_imp_holder:
-  fixes \<phi> :: "real \<Rightarrow> real"
   assumes "compact I" "local_holder_on \<gamma> I \<phi>"
   shows "\<gamma>-holder_on I \<phi>"
+text_raw \<open>}%\EndSnippet\<close>
 proof -
   have *: "\<gamma> \<in> {0<..1}" "(\<forall>t\<in>I. \<exists>\<epsilon>. \<exists>C. \<epsilon> > 0 \<and> C \<ge> 0 \<and> 
     (\<forall>r \<in> ball t \<epsilon> \<inter> I. \<forall>s \<in> ball t \<epsilon> \<inter> I. dist (\<phi> r) (\<phi> s) \<le> C * dist r s powr \<gamma>))"
@@ -273,7 +284,7 @@ proof -
   from D obtain \<rho> :: real where \<rho>: "\<forall>t \<in> I. \<exists>U \<in> D. ball t \<rho> \<subseteq> U" "\<rho> > 0"
     by (smt (verit, del_insts) Elementary_Metric_Spaces.open_ball Heine_Borel_lemma assms(1) imageE subset_image_iff)
   have "bounded (\<phi> ` I)"
-    by (metis compact_continuous_image compact_imp_bounded assms local_holder_continuous)
+    by (metis compact_continuous_image compact_imp_bounded assms local_holder_imp_continuous)
   then obtain l where l: "\<forall>x \<in> I. \<forall>y \<in> I. dist (\<phi> x) (\<phi> y) \<le> l"
     by (metis bounded_two_points image_eqI)
   text \<open> Simply need to construct C_bar such that it is greater than any of these \<close>

@@ -1,0 +1,12 @@
+session Brownian_Motion = "HOL-Probability" +
+    theories
+        Wiener_Process
+
+session Snippets = "Brownian_Motion" +
+  options [
+     document = "pdf",
+     document_output = "generated"]
+  theories
+    Continuous_Modification
+  document_files
+    build

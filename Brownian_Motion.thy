@@ -1,5 +1,5 @@
-theory Wiener_Process
-  imports Stochastic_Process
+theory Brownian_Motion
+  imports Continuous_Modification Markov_Semigroup
 begin
 
 text \<open> I am trying to prove the existence of a Wiener process with continuous paths.
@@ -24,7 +24,7 @@ lemma "i \<in> I \<Longrightarrow> (\<lambda>x. x i) \<in> lim \<rightarrow>\<^s
 
 end
 
-text \<open> Adaptation @{thm conv_normal_density_zero_mean} for the convolution operator \<close>
+text \<open> Adapting @{thm conv_normal_density_zero_mean} for the convolution operator \<close>
 theorem convolution_normal_density_zero_mean:
   assumes geq[arith, simp]: "s > 0" "t > 0"
   shows "(density lborel (normal_density 0 s)) \<star> (density lborel (normal_density 0 t)) 
@@ -44,18 +44,20 @@ interpretation finite_measure_return: finite_measure "return M x"
   by auto
 
 text \<open> Ill-defined for i < 0 \<close>
-definition Wiener_kernel :: "real \<Rightarrow> real hkernel" where
-"Wiener_kernel i \<equiv> hkernel (if i = 0 then kernel_of borel borel (return borel)
-   else kernel_of borel borel (\<lambda>x dy. (return borel x \<star> density lborel (normal_density 0 i)) dy))"
 
-lemma Wiener_kernel_0: "kernel (Wiener_kernel 0) x A' = (\<lambda>x. emeasure (return borel x)) x A'"
-  unfolding Wiener_kernel_def 
-  by (cases "A' \<in> sets borel"; simp add: emeasure_notin_sets)
+text_raw \<open>\DefineSnippet{Wiener_kernel{\<close>
+definition Wiener_kernel :: "real \<Rightarrow> real hkernel" where
+"Wiener_kernel i \<equiv> if i = 0 then hkernel (return_kernel borel)
+   else hkernel_of borel (\<lambda>x dy. (return borel x \<star> density lborel (normal_density 0 i)) dy)"
+text_raw\<open>}%EndSnippet\<close>
+
+lemma Wiener_kernel_0: "Wiener_kernel 0 = return_kernel borel"
+  unfolding Wiener_kernel_def by (simp add: from_hkernel_inverse)
 
 lemma transition_kernel_Wiener:
   assumes "i > 0"
   shows "transition_kernel borel borel (\<lambda>x dy. (return borel x \<star> density lborel (normal_density 0 i)) dy)"
-  apply (rule transition_kernelI)
+  apply (rule transition_kernel.intro)
    apply (subst convolution_emeasure)
           apply auto
      apply (simp add: subprob_space.axioms(1) subprob_space_return_ne)
@@ -70,30 +72,72 @@ lemma kernel_Wiener:
   shows "kernel (Wiener_kernel i) \<omega> A = 
       (if i = 0 then return borel \<omega> A
        else (return borel \<omega> \<star> density lborel (normal_density 0 i)) A)"
-  using assms unfolding Wiener_kernel_def by (simp add: transition_kernel_Wiener)
+  using assms unfolding Wiener_kernel_def apply (simp add: transition_kernel_Wiener)
+  apply (transfer, auto)
+  by (auto simp: transition_kernel_Wiener return_kernel_def from_hkernel_inverse)
 
-interpretation markov_semigroup Wiener_kernel borel
-  unfolding Wiener_kernel_def apply (intro markov_semigroup.intro)
+interpretation Wiener_kernel_semigroup: markov_semigroup Wiener_kernel borel
+proof (intro markov_semigroup.intro, goal_cases)
+  case (1 i)
+  then show ?case
+    unfolding Wiener_kernel_def 
+    by (auto simp: from_hkernel_inverse return_kernel_def)
+next
+  case (2 \<omega>)
+  then show ?case
+    apply (simp add: Wiener_kernel_0)
+    by (metis hkernel_of.rep_eq hkernel_of_space kernel_measure_kernel_of measure_of_of_measure
+        return_kernel return_kernel_def sets_return space_return)
+next
+  case (3 s t)
+  then show ?case
+    unfolding kernel_comp_def Wiener_kernel_def
     apply auto
-    apply (rule measure_eqI)
-     apply auto
-        apply (simp add: kernel_measure_emeasure)
+       apply (rule transition_kernel_eq_iff)
+         apply simp_all
+    sorry
+next
+  case (4 i)
+  then show ?case sorry
+qed
+
+definition brownian_motion_measure where
+"brownian_motion_measure \<equiv>
+   distr (return borel 0 \<Otimes>\<^sub>S Wiener_kernel_semigroup.lim_kernel) (PiM {0..} (\<lambda>_. borel)) (\<lambda>(x,y). y(0:=x))"
+
+interpretation brownian_motion_prob: prob_space brownian_motion_measure
   sorry
 
-locale wiener = prob_space +
-  fixes W :: "real \<Rightarrow> 'a \<Rightarrow> real"
-  assumes stochastic_process: "polish_stochastic M W"
-      and init_0[simp]: "W 0 x = 0" (* removed probability 1 *)
-      and indep_increments: "indep_increments borel W {0..}"
-      and normal_increments: "\<And>s t. 0 \<le> s \<and> s < t \<Longrightarrow> distributed M lborel (\<lambda>v. W t v - W s v) (normal_density 0 (sqrt (t-s)))"
+definition brownian_motion_process where
+"brownian_motion_process \<equiv> brownian_motion_prob.process_of borel {0..} (\<lambda>i \<omega>. \<omega> i) 0"
 
-sublocale wiener \<subseteq> stochastic_process M borel "{0..}" W
-  using polish_stochastic_def stochastic_process by blast
+text_raw \<open>\DefineSnippet{brownian_motion}{\<close>
+locale brownian_motion =
+  fixes W :: "(real, 'a, real) stochastic_process"
+  assumes init_0[simp]: "\<P>(x in proc_source W. W 0 x = 0) = 1"
+      and indep_increments: "indep_increments W"
+      and normal_increments: "\<And>s t. 0 \<le> s \<and> s < t \<Longrightarrow>
+   distributed (proc_source W) borel (\<lambda>v. W t v - W s v) (normal_density 0 (sqrt (t-s)))"
+      and AE_continuous: "AE x in proc_source W. continuous_on {0..} (\<lambda>t. W t x)"
+text_raw\<open>}%EndSnippet\<close>
 
-sublocale wiener \<subseteq> polish_projective "{0..}" distributions
-  by (simp add: polish_projective.intro projective_family_axioms)
+lemma brownian_motion_process: "brownian_motion brownian_motion_process"
+proof (intro brownian_motion.intro, goal_cases)
+  case 1
+  then show ?case sorry
+next
+  case 2
+  then show ?case sorry
+next
+  case (3 s t)
+  then show ?case sorry
+next
+  case 4
+  then show ?case sorry
+qed
 
-context wiener
+(*
+context brownian_motion
 begin
 
 lemma stationary_Wiener: "stationary_increments lborel W"
@@ -217,7 +261,7 @@ proof -
     by simp
   also have "... = expectation (W s) * expectation (\<lambda>x. W t x - W s x) + expectation (\<lambda>x. W s x ^ 2)"
     using indep_var_Wiener[OF assms] indep_var_lebesgue_integral apply auto
-    using assms indep_var_lebesgue_integral wiener.integrable_W wiener_axioms by fastforce
+    using assms indep_var_lebesgue_integral brownian_motion.integrable_W brownian_motion_axioms by fastforce
   also have "... = expectation (\<lambda>x. W s x ^ 2)"
     using Wiener_expectation assms(1) by simp
   also have "... = s"
@@ -251,9 +295,9 @@ lemma Wiener_PiM_density: (* distribution given by 37.6 in Billingsley *)
 end
 
 theorem (in prob_space) Wiener_scale_invariant:
-  assumes "wiener M W"
+  assumes "brownian_motion M W"
   shows "stochastic_process.distributions M borel W = 
         stochastic_process.distributions M borel (\<lambda>t x. 1/(sqrt c) * W (c*t) x)"n 
   oops
-
+*)
 end
