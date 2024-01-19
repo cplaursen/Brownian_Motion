@@ -2,6 +2,12 @@ theory Continuous_Modification
   imports Stochastic_Process Holder_Continuous Dyadic_Interval Measure_Convergence
 begin
 
+text \<open> The main contribution of this file is the Kolmogorov-Chentsov theorem: given a stochastic
+  process that satisfies some continuity properties, we can construct a H{\"o}lder continuous modification.
+  We first prove some auxiliary lemmas before moving on to the main construction. \<close>
+
+section \<open> Auxiliary lemmas \<close>
+
 text \<open> Klenke 5.11: Markov inequality. Compare with @{thm nn_integral_Markov_inequality} \<close>
 
 text_raw \<open>\DefineSnippet{nn_integral_Markov_inequality_extended}{\<close>
@@ -73,8 +79,8 @@ proof -
   moreover from conv have "tendsto_measure M X l (at t within {0..T})"
     by (metis tendsto_measure_mono Icc_subset_Ici_iff at_le dual_order.refl)
   thm LIMSEQ_measure_unique_AE
-  ultimately show ?thesis sorry
-qed
+  ultimately show ?thesis oops
+
 
 
 lemma Max_finite_image_ex:
@@ -94,20 +100,8 @@ lemma Union_add_subset: "(m :: nat) \<le> n \<Longrightarrow> (\<Union>k. A (k +
   apply (metis add.commute le_iff_add trans_le_add1)
   done
 
-lemma floor_in_Nats: "x \<ge> 0 \<Longrightarrow> \<lfloor>x\<rfloor> \<in> \<nat>"
+lemma floor_in_Nats [simp]: "x \<ge> 0 \<Longrightarrow> \<lfloor>x\<rfloor> \<in> \<nat>"
   by (metis nat_0_le of_nat_in_Nats zero_le_floor)
-
-lemma borel_measurable_at_within [measurable]:
-  assumes "\<And>t. t \<in> T \<Longrightarrow> f t \<in> borel_measurable M"
-  shows "(\<lambda>\<omega>. Lim (at x within T) (\<lambda>t. f t \<omega>)) \<in> borel_measurable M"
-  apply (simp add: t2_space_class.Lim_def)
-  find_theorems Lim measurable
-  thm borel_measurable_lim
-  thm convergent_limsup_cl
-  thm Liminf_def
-  find_theorems Limsup Lim
-  thm lim_imp_Limsup
-  sorry
 
 text \<open> Klenke 21.6 - Kolmorogov-Chentsov\<close>
 
@@ -231,8 +225,8 @@ lemma A_geq: "2 ^ n * T \<ge> 1 \<Longrightarrow> A n = {x \<in> space source.
 lemma A_measurable[measurable]: "A n \<in> sets source"
   unfolding A_def apply (cases "2 ^ n * T < 1")
    apply simp
-   apply (simp only: if_False)
-   apply measurable
+  apply (simp only: if_False)
+  apply measurable
   done
 
 lemma emeasure_A_leq:
@@ -367,7 +361,7 @@ lemma N_null: "N \<in> null_sets source"
 proof -
   have "(\<lambda>n. measure source (B n)) \<longlonglongrightarrow> measure source N"
     apply (rule proc_source.finite_Lim_measure_decseq)
-      using A_measurable apply blast
+      using A_measurable apply fast
       apply (intro monotoneI, simp add: Union_add_subset)
     done
   then have "measure source N = 0"
@@ -386,7 +380,6 @@ context
   assumes \<omega>: "\<omega> \<in> space source - N"
 begin
 
-(* EXPERIMENTAL addition of n\<^sub>0 > 0 - removes an edge case *)
 definition "n\<^sub>0 \<equiv> SOME m. \<omega> \<notin> (\<Union>n. A (n + m)) \<and> m > 0"
 
 lemma
@@ -439,6 +432,7 @@ proof -
     by (simp, smt (verit, ccfv_threshold) divide_powr_uminus powr_realpow)
 qed
 
+text \<open> Klenke (21.8) \<close>
 lemma dist_dyadic_fixed:
   assumes mn: "m \<ge> n" "n \<ge> n\<^sub>0"
   and s_dyadic: "s \<in> dyadic_interval_step m 0 T"
@@ -475,6 +469,8 @@ proof -
     using dyadic_expansion_ex dyadic_interval_minus[OF u_dyadic t_dyadic \<open>u \<le> t\<close>] by blast
   then have "k_tu = 0"
     using dyadic_expansion_floor[OF tu_exp] \<open>t - u < 1\<close> \<open>u \<le> t\<close> by linarith
+
+  define t' where "t' \<equiv> \<lambda>l. (u + (\<Sum>i = n..l. b_tu!i * (t - u) / 2 ^ i))"
   show ?thesis
     using X_dyadic_incr sorry
 qed
@@ -611,6 +607,24 @@ next
   ultimately show ?thesis
     by force
 qed
+end
+
+(* Needed for X_tilde_measurable *)
+lemma borel_measurable_at_within [measurable]:
+  assumes [measurable]: "\<And>t. t \<in> T \<Longrightarrow> f t \<in> borel_measurable M"
+      (* and convergent: "\<exists>l. (f \<longlongrightarrow> l) (at x within T)" *)
+  shows "(\<lambda>\<omega>. Lim (at x within T) (\<lambda>t. f t \<omega>)) \<in> borel_measurable M"
+  sorry
+  find_theorems Lim measurable
+  thm borel_measurable_lim
+  thm convergent_limsup_cl
+  thm Liminf_def
+  find_theorems Limsup Lim
+  thm lim_imp_Limsup
+  find_theorems Lim at_within
+
+context Kolmogorov_Chentsov_finite
+begin
 
 lemma X_tilde_measurable[measurable]: "X_tilde' t \<in> borel_measurable source" if "t \<in> {0..T}" for t
   unfolding X_tilde'_def by measurable
@@ -622,6 +636,11 @@ lemma X_tilde_modification: "modification (restrict_index X {0..T})
   apply (subst restrict_index_source)
   using X_eq_X_tilde_AE by blast
 end
+
+text \<open> We have now shown that we can construct a modification of X for any interval {0..T}. We want
+  to extend this result to construct a modification on the interval {0..} - this can be constructed
+  by gluing together all modifications with natural-valued T which results in a countable union of
+  modifications, which itself is a modification. \<close>
 
 context Kolmogorov_Chentsov
 begin
@@ -847,8 +866,8 @@ next
         unfolding X_mod_def apply (simp only: True if_True)
         apply (intro Mod_eq_N_inf[OF True])
           apply simp
-          using \<open>t \<in> {0..}\<close> apply auto
-           apply (metis (no_types, opaque_lifting)floor_in_Nats Nats_1 Nats_add Nats_cases 
+        using \<open>t \<in> {0..}\<close> apply auto
+           apply (metis (no_types, opaque_lifting) floor_in_Nats Nats_1 Nats_add Nats_cases 
                   of_int_of_nat_eq of_nat_in_Nats, linarith)+
         done
       moreover have "(Mod (real_of_int \<lfloor>t\<rfloor> + 1)) s \<omega> = X_mod s \<omega>"
@@ -874,4 +893,5 @@ lemma local_holder_X_mod_process: "local_holder_on \<gamma> {0..} (\<lambda>t. X
   by (smt (verit, best) Mod_measurable UNIV_I local_holder_X_mod local_holder_on_cong
       proc_source.process_process_of space_borel target_borel)
 end
+
 end

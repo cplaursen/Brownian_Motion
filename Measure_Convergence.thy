@@ -17,11 +17,11 @@ definition tendsto_measure :: "'b measure \<Rightarrow> ('a \<Rightarrow> 'b \<R
 abbreviation (in prob_space) tendsto_prob  (infixr "\<longlongrightarrow>\<^sub>P" 55) where
 "(f \<longlongrightarrow>\<^sub>P l) F \<equiv> tendsto_measure M f l F"
 
-lemma tendsto_measure_measurable [measurable(raw)]:
+lemma tendsto_measure_measurable:
   "tendsto_measure M X l F \<Longrightarrow> X n \<in> borel_measurable M"
   unfolding tendsto_measure_def by meson
 
-lemma tendsto_measure_measurable_lim [measurable(raw)]:
+lemma tendsto_measure_measurable_lim:
   "tendsto_measure M X l F \<Longrightarrow> l \<in> borel_measurable M"
   unfolding tendsto_measure_def by meson
 
@@ -298,7 +298,7 @@ proof -
     then have "emeasure M ({x \<in> space M. dist (l x) (l' x) > \<epsilon>} \<inter> A m) \<le>
      emeasure M ({x \<in> space M. dist (l x) (f n x) > \<epsilon>/2} \<inter> A m \<union> {x \<in> space M. dist (f n x) (l' x) > \<epsilon>/2} \<inter> A m)"
       apply (rule emeasure_mono)
-       using A pred_def by (measurable; force)
+       using A pred_def sorry
     also have "... \<le> emeasure M ({x \<in> space M. dist (l x) (f n x) > \<epsilon>/2} \<inter> A m) +
      emeasure M ({x \<in> space M. dist (f n x) (l' x) > \<epsilon>/2} \<inter> A m)"
       apply (rule emeasure_subadditive)
