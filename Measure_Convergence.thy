@@ -17,11 +17,11 @@ definition tendsto_measure :: "'b measure \<Rightarrow> ('a \<Rightarrow> 'b \<R
 abbreviation (in prob_space) tendsto_prob  (infixr "\<longlongrightarrow>\<^sub>P" 55) where
 "(f \<longlongrightarrow>\<^sub>P l) F \<equiv> tendsto_measure M f l F"
 
-lemma tendsto_measure_measurable:
+lemma tendsto_measure_measurable[measurable_dest]:
   "tendsto_measure M X l F \<Longrightarrow> X n \<in> borel_measurable M"
   unfolding tendsto_measure_def by meson
 
-lemma tendsto_measure_measurable_lim:
+lemma tendsto_measure_measurable_lim[measurable_dest]:
   "tendsto_measure M X l F \<Longrightarrow> l \<in> borel_measurable M"
   unfolding tendsto_measure_def by meson
 

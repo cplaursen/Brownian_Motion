@@ -88,19 +88,44 @@ lemma dyadic_interval_step_iff:
    (\<exists>k. k \<ge> \<lceil>2^n * S\<rceil> \<and> k \<le> \<lfloor>2^n * T\<rfloor> \<and> x = k/2^n)"
   unfolding dyadic_interval_step_def by (auto simp add: image_iff)
 
+lemma dyadic_interval_step_memI:
+  assumes "\<exists>k::int. x = k/2^n" "x \<ge> S" "x \<le> T"
+  shows "x \<in> dyadic_interval_step n S T"
+proof -
+  obtain k :: int where "x = k/2^n"
+    using assms(1) by blast
+  then have k: "k = 2^n * x"
+    by simp
+  then have "k \<ge> \<lceil>2^n * S\<rceil>"
+    by (simp add: assms(2) ceiling_le)
+  moreover from k have "k \<le> \<lfloor>2^n * T\<rfloor>"
+    by (simp add: assms(3) le_floor_iff)
+  ultimately show ?thesis
+    using dyadic_interval_step_iff \<open>x = k / 2 ^ n\<close> by blast
+qed
+
 lemma mem_dyadic_interval: "x \<in> dyadic_interval S T \<longleftrightarrow> (\<exists>n. x \<in> dyadic_interval_step n S T)"
   unfolding dyadic_interval_def by blast
 
-lemma dyadics_leq: "x \<in> dyadic_interval_step n S T \<Longrightarrow> x \<le> T"
+lemma mem_dyadic_intervalI: "\<exists>n. x \<in> dyadic_interval_step n S T \<Longrightarrow> x \<in> dyadic_interval S T"
+  using mem_dyadic_interval by auto
+
+lemma dyadic_step_leq: "x \<in> dyadic_interval_step n S T \<Longrightarrow> x \<le> T"
   unfolding dyadic_interval_step_def apply clarsimp
   by (simp add: divide_le_eq le_floor_iff mult.commute)
 
-lemma dyadics_geq: "x \<in> dyadic_interval_step n S T \<Longrightarrow> x \<ge> S"
+lemma dyadics_leq: "x \<in> dyadic_interval S T \<Longrightarrow> x \<le> T"
+  using dyadic_step_leq mem_dyadic_interval by blast
+
+lemma dyadic_step_geq: "x \<in> dyadic_interval_step n S T \<Longrightarrow> x \<ge> S"
   unfolding dyadic_interval_step_def apply clarsimp
   by (simp add: ceiling_le_iff mult.commute pos_le_divide_eq)
 
+lemma dyadics_geq: "x \<in> dyadic_interval S T \<Longrightarrow> x \<ge> S"
+  using dyadic_step_geq mem_dyadic_interval by blast
+
 corollary dyadic_interval_subset_interval: "(dyadic_interval 0 T) \<subseteq> {0..T}"
-  unfolding dyadic_interval_def using dyadics_geq dyadics_leq by force
+  using dyadics_geq dyadics_leq by force
 
 lemma zero_in_dyadics: "T \<ge> 0 \<Longrightarrow> 0 \<in> dyadic_interval_step n 0 T"
   using dyadic_interval_step_def by force
@@ -155,8 +180,7 @@ proof -
     then obtain k :: int where k: "t = k / 2^n" "k \<le> \<lfloor>2 ^ n * T\<rfloor>"
       using dyadic_interval_step_iff by blast
     then have "k > 0"
-      by (smt (verit, ccfv_threshold) \<open>t \<noteq> 0\<close> divide_eq_0_iff divide_right_mono dyadics_geq n
-          of_int_0_less_iff zero_le_power)
+      using \<open>t \<noteq> 0\<close> dyadic_interval_step_iff n by force
     define s :: "nat \<Rightarrow> real" where "s \<equiv> \<lambda>m. (k * 2^(m+1) - 1) / 2 ^ (m + n + 1)"
     have "s m \<in> dyadic_interval_step (m + n + 1) 0 T" for m
     proof -
@@ -256,6 +280,11 @@ proof (rule subset_antisym)
     by (cases "T \<ge> 0"; simp)
 qed
 
+corollary dyadic_interval_islimpt:
+  assumes "T > 0" "t \<in> {0..T}"
+  shows "t islimpt dyadic_interval 0 T"
+  using assms by (subst limpt_of_closure[symmetric], simp add: dyadic_interval_dense)
+
 lemma dyadic_interval_step_finite[simp]: "finite (dyadic_interval_step n S T)"
   unfolding dyadic_interval_step_def by simp
 
@@ -314,10 +343,11 @@ lemma dyadic_interval_step_Max: "T \<ge> 0 \<Longrightarrow> Max (dyadic_interva
   apply (subst mono_Max_commute[of "\<lambda>x. real_of_int x / 2^n", symmetric])
   by (auto simp: mono_def field_simps Max_eq_iff)
 
+(* TODO Extend this to dyadic_interval_step n S T *)
 text_raw \<open>\DefineSnippet{dyadic_interval_step_subset}{\<close>
 lemma dyadic_interval_step_subset:
   "n \<le> m \<Longrightarrow> dyadic_interval_step n 0 T \<subseteq> dyadic_interval_step m 0 T"
-text_raw \<open>}%EndSnippet\<close>
+  text_raw \<open>}%EndSnippet\<close>
 proof (rule subsetI)
   fix x assume "n \<le> m" "x \<in> dyadic_interval_step n 0 T"
   then obtain k where k:  "k \<ge> 0" "k \<le> \<lfloor>2^n * T\<rfloor>" "x = k / 2^n"
@@ -344,6 +374,11 @@ proof (rule subsetI)
     apply (simp add: \<open>n \<le> m\<close> k(3) power_diff)
     done
 qed
+
+corollary dyadic_interval_step_mono: 
+  assumes "x \<in> dyadic_interval_step n 0 T" "n \<le> m"
+  shows "x \<in> dyadic_interval_step m 0 T"
+  using assms dyadic_interval_step_subset by blast
 
 lemma dyadic_as_natural:
   assumes "x \<in> dyadic_interval_step n 0 T"
@@ -382,34 +417,33 @@ proof -
         assms(3) divide_strict_right_mono of_nat_add of_nat_less_iff zero_less_power)
   then show ?thesis
     using dyadic_of_natural
-    by (smt (verit, ccfv_SIG) assms(1) assms(2) dyadics_geq dyadics_leq)
+    by (smt (verit, best) assms(1,2) dyadic_step_geq dyadic_step_leq)
 qed
 
 lemma dyadic_times_nat: "x \<in> dyadic_interval_step n 0 T \<Longrightarrow> (x * 2 ^ n) \<in> \<nat>"
   using dyadic_as_natural by fastforce
 
 text_raw \<open>\DefineSnippet{dyadic_expansion}{\<close>
-definition "dyadic_expansion x n T b k \<equiv> set b \<subseteq> {0,1}
-  \<and> length b = n \<and> k \<in> {0..\<lfloor>T\<rfloor>} \<and> x = k + (\<Sum>m\<in>{1..n}. (b ! (m-1)) / 2 ^ m)"
+definition "dyadic_expansion x n b k \<equiv> set b \<subseteq> {0,1}
+  \<and> length b = n \<and> x = real_of_int k + (\<Sum>m\<in>{1..n}. real (b ! (m-1)) / 2 ^ m)"
 text_raw \<open>}%EndSnippet\<close>
 
 lemma dyadic_expansionI:
-  assumes "set b \<subseteq> {0,1}" "length b = n" "k \<in> {0..\<lfloor>T\<rfloor>}" "x= k + (\<Sum>m\<in>{1..n}. (b ! (m-1)) / 2 ^ m)"
-  shows "dyadic_expansion x n T b k"
+  assumes "set b \<subseteq> {0,1}" "length b = n" "x = k + (\<Sum>m\<in>{1..n}. (b ! (m-1)) / 2 ^ m)"
+  shows "dyadic_expansion x n b k"
   unfolding dyadic_expansion_def using assms by blast
 
 lemma dyadic_expansionD:
-  assumes "dyadic_expansion x n T b k"
+  assumes "dyadic_expansion x n b k"
   shows "set b \<subseteq> {0,1}"
     and "length b = n"
-    and "k \<in> {0..\<lfloor>T\<rfloor>}"
     and "x = k + (\<Sum>m\<in>{1..n}. (b ! (m-1)) / 2 ^ m)"
   using assms unfolding dyadic_expansion_def by simp_all
 
 text_raw \<open>\DefineSnippet{dyadic_expansion_exists}{\<close>
 lemma dyadic_expansion_ex:
   assumes "x \<in> dyadic_interval_step n 0 T" 
-  shows "\<exists>b k. dyadic_expansion x n T b k"
+  shows "\<exists>b k. dyadic_expansion x n b k"
 text_raw \<open>}%EndSnippet\<close>
   using assms
 proof (induction n arbitrary: x)
@@ -430,7 +464,7 @@ next
       by (simp add: k(2) real_of_int_div)
     then have "x \<in> dyadic_interval_step n 0 T"
       using dyadic_interval_step_def div2 by force
-    then obtain k' b where kb: "dyadic_expansion x n T b k'"
+    then obtain k' b where kb: "dyadic_expansion x n b k'"
       using Suc(1) by blast
     show ?thesis
       apply (rule exI[where x="b @ [0]"])
@@ -448,10 +482,10 @@ next
       by (simp add: k(2) field_simps)
     then have "x - 1 / 2 ^ (Suc n) \<in> dyadic_interval_step n 0 T"
       using div2 by (simp add: dyadic_interval_step_def)
-    then obtain k' b where kb: "dyadic_expansion (x-1/2^Suc n) n T b k'"
+    then obtain k' b where kb: "dyadic_expansion (x-1/2^Suc n) n b k'"
       using Suc(1)[of "x - 1 / 2 ^ (Suc n)"] by blast
     have x: "x = real_of_int k' + (\<Sum>m = 1..n. b ! (m-1) / 2 ^ m) + 1/2^Suc n"
-      using dyadic_expansionD(4)[OF kb] by (simp add: field_simps)
+      using dyadic_expansionD(3)[OF kb] by (simp add: field_simps)
     show ?thesis
       apply (rule exI[where x="b @ [1]"])
       apply (rule exI[where x="k'"])
@@ -464,7 +498,7 @@ next
 qed
 
 lemma dyadic_expansion_frac_le_1: 
-  assumes "dyadic_expansion x n T b k"
+  assumes "dyadic_expansion x n b k"
   shows "(\<Sum>m\<in>{1..n}. (b ! (m-1)) / 2 ^ m) < 1"
 proof -
   have "b ! (m - 1) \<in> {0,1}" if "m \<in> {1..n}" for m
@@ -472,7 +506,7 @@ proof -
     from assms have "set b \<subseteq> {0,1}" "length b = n"
       unfolding dyadic_expansion_def by blast+
     then have "a < n \<Longrightarrow> b ! a \<in> {0,1}" for a
-      by force
+      using nth_mem by blast
     moreover have "m - 1 < n"
       using that by force
     ultimately show ?thesis
@@ -488,7 +522,7 @@ proof -
 qed
 
 lemma dyadic_expansion_frac_range:
-  assumes "dyadic_expansion x n T b k" "m \<in> {1..n}"
+  assumes "dyadic_expansion x n b k" "m \<in> {1..n}"
   shows "b ! (m-1) \<in> {0,1}"
 proof -
   have "m - 1 < length b"
@@ -497,8 +531,43 @@ proof -
     using nth_mem dyadic_expansionD(1)[OF assms(1)] by blast
 qed
 
+lemma dyadic_expansion_interval:
+  assumes "dyadic_expansion x n b k" "x \<in> {S..T}"
+  shows "x \<in> dyadic_interval_step n S T"
+proof (subst dyadic_interval_step_iff, intro exI, safe)
+  define k' where "k' \<equiv> k * 2^n + (\<Sum>i = 1..n. b!(i-1) * 2^(n-i))"
+  show "x = k' / 2^n"
+    apply (simp add: dyadic_expansionD(3)[OF assms(1)] k'_def add_divide_distrib sum_divide_distrib)
+    apply (intro sum.cong, simp)
+    apply (simp add: field_simps)
+    by (metis add_diff_inverse_nat linorder_not_le power_add)
+  then have "k' = \<lfloor>2^n * x\<rfloor>"
+    by simp
+  then show "k' \<le> \<lfloor>2 ^ n * T\<rfloor>"
+    using assms(2) by (auto intro!: floor_mono mult_left_mono)
+  from \<open>x = k'/2^n\<close> have "k' = \<lceil>2^n * x\<rceil>"
+    by force
+  then show "\<lceil>2 ^ n * S\<rceil> \<le> k'"
+    using assms(2) by (auto intro!: ceiling_mono mult_left_mono)
+qed
+
+lemma dyadic_expansion_nth_geq:
+  assumes "dyadic_expansion x n b k" "m \<in> {1..n}" "b ! (m-1) = 1"
+  shows "x \<ge> k + 1/2^m"
+proof -
+  have "(\<Sum> i = 1..n. f i) = f m + (\<Sum> i \<in> ({1..n} - {m}). f i)" for f :: "nat \<Rightarrow> real"
+    by (meson assms(2) finite_atLeastAtMost sum.remove)
+  with dyadic_expansionD(3)[OF assms(1)] assms(2,3)
+  have "x = k + b!(m-1)/2^m + (\<Sum> i \<in> ({1..n} - {m}). b ! (i-1) / 2^i)"
+    by simp
+  moreover have "(\<Sum> i \<in> ({1..n} - {m}). b ! (i-1) / 2^i) \<ge> 0"
+    by (simp add: sum_nonneg)
+  ultimately show ?thesis
+    using assms(3) by fastforce
+qed
+
 lemma dyadic_expansion_frac_geq_0:
-  assumes "dyadic_expansion x n T b k"
+  assumes "dyadic_expansion x n b k"
   shows "(\<Sum>m\<in>{1..n}. (b ! (m-1)) / 2 ^ m) \<ge> 0"
 proof -
   have "b ! (m - 1) \<in> {0,1}" if "m \<in> {1..n}" for m
@@ -510,21 +579,21 @@ proof -
 qed
 
 lemma dyadic_expansion_frac:
-  assumes "dyadic_expansion x n T b k"
+  assumes "dyadic_expansion x n b k"
   shows "frac x = (\<Sum>m\<in>{1..n}. (b ! (m-1))/ 2 ^ m)"
   apply (simp add: frac_unique_iff)
   apply safe
-    using dyadic_expansionD(4)[OF assms] apply simp
+    using dyadic_expansionD(3)[OF assms] apply simp
     using dyadic_expansion_frac_geq_0[OF assms] apply simp
     using dyadic_expansion_frac_le_1[OF assms] apply simp
   done
 
 lemma dyadic_expansion_floor:
-  assumes "dyadic_expansion x n T b k"
+  assumes "dyadic_expansion x n b k"
   shows "k = \<lfloor>x\<rfloor>"
 proof -
   have "x = k + (\<Sum>m\<in>{1..n}. (b ! (m-1))/ 2 ^ m)"
-    using assms by (rule dyadic_expansionD(4))
+    using assms by (rule dyadic_expansionD(3))
   then have "x = k + frac x"
     using dyadic_expansion_frac[OF assms] by linarith
   then have "k = x - frac x"
@@ -555,8 +624,8 @@ next
 qed
 
 lemma dyadic_expansion_unique:
-  assumes "dyadic_expansion x n T b k"
-      and "dyadic_expansion x n T c j"
+  assumes "dyadic_expansion x n b k"
+      and "dyadic_expansion x n c j"
     shows "b = c \<and> j = k"
 proof (safe, rule ccontr)
   show "j = k"
@@ -565,7 +634,7 @@ proof (safe, rule ccontr)
   have eq: "(\<Sum>m\<in>{1..n}. (b ! (m-1)) / 2 ^ m) = (\<Sum>m\<in>{1..n}. (c ! (m-1)) / 2 ^ m)"
   proof -
     have "k + (\<Sum>m\<in>{1..n}. (b ! (m-1)) / 2 ^ m) = j + (\<Sum>m\<in>{1..n}. (c ! (m-1)) / 2 ^ m)"
-      using assms dyadic_expansionD(4) by blast
+      using assms dyadic_expansionD(3) by blast
     then show ?thesis
       using \<open>j = k\<close> by linarith
   qed
@@ -602,17 +671,16 @@ proof (safe, rule ccontr)
       also have "... \<ge> 1 / 2 ^ (l+1)"
         apply (simp add: 1)
         apply (rule sum_nonneg)
-        using dyadic_expansion_frac_range[OF assms(2)] apply (simp add: field_simps)
-        by (metis One_nat_def gr_implies_not0 leI le_numeral_extra(3) less_one linordered_nonzero_semiring_class.zero_le_one nat_less_le old.nat.distinct(2))
+        using dyadic_expansion_frac_range[OF assms(2)] by simp
       finally have c_ge: "(\<Sum>m\<in>{l+1..n}. (c ! (m-1)) / 2 ^ m) \<ge> 1/2^(l+1)" .
       have "(\<Sum>m\<in>{l+1..n}. (b ! (m-1)) / 2 ^ m) =  (b ! ((l+1)-1)) / 2 ^ (l+1) + (\<Sum>m\<in>{Suc (l+1)..n}. (b ! (m-1)) / 2 ^ m)"
-        by (smt (verit, ccfv_SIG) Suc_eq_plus1 Suc_le_mono Suc_pred' \<open>l \<in> {0..n - 1}\<close> atLeastAtMost_iff bot_nat_0.not_eq_extremum ex order_less_trans sum.atLeast_Suc_atMost)
+        by (meson \<open>l + 1 < n\<close> nat_less_le sum.atLeast_Suc_atMost)
       also have "... = (\<Sum>m\<in>{Suc (l+1)..n}. (b ! (m-1)) / 2 ^ m)"
         using 1 by auto
       also have "... \<le> (\<Sum>m\<in>{Suc (l+1)..n}. 1 / 2 ^ m)"
         apply (rule sum_mono)
         using dyadic_expansion_frac_range[OF assms(1)] apply (simp add: field_simps)
-        by (metis Suc_eq_plus1 add_diff_cancel_left' diff_le_self dual_order.refl not_less_eq_eq old.nat.exhaust zero_less_one_class.zero_le_one)
+        by (metis (no_types, lifting) One_nat_def add_leE nle_le of_nat_1_eq_iff plus_1_eq_Suc real_of_nat_ge_one_iff)
       also have "... < 1 / 2 ^ (l+1)"
         using sum_interval_pow2_inv[OF \<open>l + 1 < n\<close>] by fastforce
       finally have "(\<Sum>m\<in>{l+1..n}. (b ! (m-1)) / 2 ^ m) < 1 / 2 ^ (l+1)" .
@@ -628,21 +696,23 @@ proof (safe, rule ccontr)
     {
       assume \<open>l + 1 < n\<close>
       have "(\<Sum>m\<in>{l+1..n}. (b ! (m-1)) / 2 ^ m) =  (b ! ((l+1)-1)) / 2 ^ (l+1) + (\<Sum>m\<in>{Suc (l+1)..n}. (b ! (m-1)) / 2 ^ m)"
-        by (smt (verit, ccfv_SIG) Suc_eq_plus1 Suc_le_mono Suc_pred' \<open>l \<in> {0..n - 1}\<close> atLeastAtMost_iff bot_nat_0.not_eq_extremum ex order_less_trans sum.atLeast_Suc_atMost)
+        by (meson \<open>l + 1 < n\<close> nat_less_le sum.atLeast_Suc_atMost)
       also have "... \<ge> 1 / 2 ^ (l+1)"
         apply (simp add: 2)
         apply (rule sum_nonneg)
-        using dyadic_expansion_frac_range[OF assms(1)] apply (simp add: field_simps)
-        by (metis One_nat_def gr_implies_not0 leI le_numeral_extra(3) less_one linordered_nonzero_semiring_class.zero_le_one nat_less_le old.nat.distinct(2))
+        using dyadic_expansion_frac_range[OF assms(1)] by simp
       finally have b_ge: "(\<Sum>m\<in>{l+1..n}. (b ! (m-1)) / 2 ^ m) \<ge> 1/2^(l+1)" .
       have "(\<Sum>m\<in>{l+1..n}. (c ! (m-1)) / 2 ^ m) =  (c ! ((l+1)-1)) / 2 ^ (l+1) + (\<Sum>m\<in>{Suc (l+1)..n}. (c ! (m-1)) / 2 ^ m)"
-        by (smt (verit, ccfv_SIG) Suc_eq_plus1 Suc_le_mono Suc_pred' \<open>l \<in> {0..n - 1}\<close> atLeastAtMost_iff bot_nat_0.not_eq_extremum ex order_less_trans sum.atLeast_Suc_atMost)
+        by (meson \<open>l + 1 < n\<close> nat_less_le sum.atLeast_Suc_atMost)
       also have "... = (\<Sum>m\<in>{Suc (l+1)..n}. (c ! (m-1)) / 2 ^ m)"
         using 2 by auto
       also have "... \<le> (\<Sum>m\<in>{Suc (l+1)..n}. 1 / 2 ^ m)"
-        apply (rule sum_mono)
-        using dyadic_expansion_frac_range[OF assms(2)] apply (simp add: field_simps)
-        by (metis Suc_eq_plus1 add_diff_cancel_left' diff_le_self dual_order.refl not_less_eq_eq old.nat.exhaust zero_less_one_class.zero_le_one)
+        apply (intro sum_mono divide_right_mono)
+        using dyadic_expansion_frac_range[OF assms(2)]
+         apply (metis (no_types, opaque_lifting) One_nat_def Suc_leI Suc_le_mono atLeastAtMost_iff
+            atLeastAtMost_singleton_iff bot_nat_0.extremum bot_nat_0.not_eq_extremum insert_iff of_nat_eq_1_iff of_nat_le_iff)
+        apply simp
+        done
       also have "... < 1 / 2 ^ (l+1)"
         using sum_interval_pow2_inv[OF \<open>l + 1 < n\<close>] by fastforce
       finally have "(\<Sum>m\<in>{l+1..n}. (c ! (m-1)) / 2 ^ m) < 1 / 2 ^ (l+1)" .
@@ -663,7 +733,7 @@ proof (safe, rule ccontr)
     moreover have "{1..l} \<inter> {l<..n} = {}"
       using ivl_disj_int_two(8) by blast
     ultimately have split_sum: "(\<Sum>m \<in>{1..n}. (c ! (m-1)) / 2 ^ m) = (\<Sum>m =1..l. (c ! (m-1)) / 2 ^ m) + (\<Sum>m \<in> {l<..n}. (c ! (m-1)) / 2 ^ m)"
-        for c :: "real list"
+        for c :: "nat list"
       by (simp add: sum_Un)
     then show ?thesis
       using sum_upto_l_eq sum_ge_l_noteq split_sum[of b] split_sum[of c]
@@ -672,6 +742,5 @@ proof (safe, rule ccontr)
   then show False
     using eq by blast
 qed
-
 
 end
