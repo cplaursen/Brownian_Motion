@@ -285,6 +285,11 @@ corollary dyadic_interval_islimpt:
   shows "t islimpt dyadic_interval 0 T"
   using assms by (subst limpt_of_closure[symmetric], simp add: dyadic_interval_dense)
 
+corollary at_within_dyadic_interval_nontrivial[simp]:
+  assumes "T > 0" "t \<in> {0..T}"
+  shows "(at t within dyadic_interval 0 T) \<noteq> bot"
+  using assms dyadic_interval_islimpt trivial_limit_within by blast
+
 lemma dyadic_interval_step_finite[simp]: "finite (dyadic_interval_step n S T)"
   unfolding dyadic_interval_step_def by simp
 

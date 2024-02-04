@@ -593,7 +593,6 @@ proof (intro indep_incrementsI)
     apply (simp add: proc_source.indep_vars_def)
     apply safe
     defer
-    sorry
-qed
+    oops
 
 end

@@ -482,7 +482,6 @@ lemma semidirect_product_unique:
     and finite: "finite_measure M" "finite_kernel K"
     and sets: "sets M = sets (kernel_source K)"
   shows "kernel_measure (emeasure_kernel M M \<Otimes>\<^sub>P K) x = kernel_measure (emeasure_kernel M M \<Otimes>\<^sub>P K) y"
- (* Disgusting proof *)
   unfolding kernel_measure_altdef
   apply (rule arg_cong3[where g=measure_of])
     apply simp_all

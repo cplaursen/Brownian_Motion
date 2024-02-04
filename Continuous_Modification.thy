@@ -20,6 +20,12 @@ lemma eventually_prodI':
   shows "eventually R (F \<times>\<^sub>F G)"
   using assms eventually_prod_filter by blast
 
+text \<open> Analogous to @{thm AE_E3}\<close>
+lemma AE_I3:
+  assumes "\<And>x. x \<in> space M - N \<Longrightarrow> P x" "N \<in> null_sets M"
+  shows "AE x in M. P x"
+  by (metis (no_types, lifting) assms DiffI eventually_ae_filter mem_Collect_eq subsetI)
+
 text \<open> Extends @{thm tendsto_dist} \<close>
 lemma tendsto_dist_prod:
   fixes l m :: "'a :: metric_space"
@@ -34,6 +40,33 @@ proof (rule tendstoI)
   show "\<forall>\<^sub>F x in F \<times>\<^sub>F G. dist (dist (f (fst x)) (g (snd x))) (dist l m) < e"
     apply (auto intro!: eventually_prodI')
     by (smt (verit) dist_commute dist_real_def dist_triangle2)
+qed
+
+lemma borel_measurable_at_within_metric [measurable]:
+  fixes f :: "'a :: first_countable_topology \<Rightarrow> 'b \<Rightarrow> 'c :: metric_space"
+  assumes [measurable]: "\<And>t. t \<in> S \<Longrightarrow> f t \<in> borel_measurable M"
+      and convergent: "\<And>\<omega>. \<omega> \<in> space M \<Longrightarrow> \<exists>l. ((\<lambda>t. f t \<omega>) \<longlongrightarrow> l) (at x within S)"
+      and nontrivial: "at x within S \<noteq> \<bottom>"
+    shows "(\<lambda>\<omega>. Lim (at x within S) (\<lambda>t. f t \<omega>)) \<in> borel_measurable M"
+proof -
+  obtain l where l: "\<And>\<omega>. \<omega> \<in> space M \<Longrightarrow> ((\<lambda>t. f t \<omega>) \<longlongrightarrow> l \<omega>) (at x within S)"
+    using convergent by metis
+  then have Lim_eq: "Lim (at x within S) (\<lambda>t. f t \<omega>) = l \<omega>"
+    if "\<omega> \<in> space M" for \<omega>
+    using tendsto_Lim[OF nontrivial] that by blast
+  from nontrivial have 1: "x islimpt S"
+    using trivial_limit_within by blast
+  then obtain s :: "nat \<Rightarrow> 'a" where s: "\<And>n. s n \<in> S - {x}" "s \<longlonglongrightarrow> x"
+    using islimpt_sequential by blast
+  then have "\<And>n. f (s n) \<in> borel_measurable M"
+    apply measurable
+    using s by simp
+  moreover with s have "(\<lambda>n. (f (s n) \<omega>)) \<longlonglongrightarrow> l \<omega>" if "\<omega> \<in> space M" for \<omega>
+    using l[unfolded tendsto_at_iff_sequentially comp_def] that by blast
+  ultimately have "l \<in> borel_measurable M"
+    by (rule borel_measurable_LIMSEQ_metric)
+  then show ?thesis
+    using measurable_cong[OF Lim_eq] by fast
 qed
 
 text \<open> Klenke 5.11: Markov inequality. Compare with @{thm nn_integral_Markov_inequality} \<close>
@@ -93,21 +126,6 @@ lemma nn_integral_Markov_inequality_extended_rnv:
     using mono ennreal_leI unfolding mono_on_def apply force
     apply (simp_all add: e)
     done
-
-lemma (in prob_space) tendsto_prob_eq_limit_AE:
-  fixes X :: "real \<Rightarrow> 'a \<Rightarrow> 'b :: {second_countable_topology,metric_space}"
-  assumes [measurable]: "\<And>i. X i \<in> borel_measurable M" "l \<in> borel_measurable M"
-  assumes t: "t \<in> {0..T}" "T \<noteq> 0"
-  assumes conv: "tendsto_measure M X l (at t within {0..})"
-  assumes lim: "\<And>x. ((\<lambda>s. X s x) \<longlongrightarrow> (l x))(at t within dyadic_interval 0 T)"
-  shows "AE x in M. X t x = l x"
-proof -
-  from lim have "tendsto_measure M X l (at t within dyadic_interval 0 T)"
-    using Lim_measure_pointwise assms(1) assms(2) by blast
-  moreover from conv have "tendsto_measure M X l (at t within {0..T})"
-    by (metis tendsto_measure_mono Icc_subset_Ici_iff at_le dual_order.refl)
-  thm LIMSEQ_measure_unique_AE
-  ultimately show ?thesis oops
 
 lemma Max_finite_image_ex:
   assumes "finite S" "S \<noteq> {}" "P (MAX k\<in>S. f k)" 
@@ -281,6 +299,17 @@ proof (simp add: finite_measure.tendsto_measure_finite_leq, safe, intro Lim_with
     apply (intro exI[where x="?q"])
     apply (subst(3) dist_commute)
     using \<open>0 < p\<close> gt_0(3) \<open>0 < \<epsilon>\<close> dist_commute by fastforce
+qed
+
+lemma conv_in_prob_finite:
+  assumes "t \<ge> 0"
+  shows "tendsto_measure (proc_source X) X (X t) (at t within {0..T})"
+proof -
+  have "at t within {0..T} \<le> at t within {0..}"
+    by (simp add: at_le)
+  then show ?thesis
+    apply (rule tendsto_measure_mono)
+    using assms by (rule conv_in_prob)
 qed
 
 lemma incr: "\<P>(x in source. 2 powr (- \<gamma> * n) \<le> dist (X ((k - 1) * 2 powr - n) x) (X (k * 2 powr - n) x))
@@ -531,10 +560,9 @@ proof -
     by (simp, smt (verit, ccfv_threshold) divide_powr_uminus powr_realpow)
 qed
 
-text \<open> Klenke (21.8)
-  Let $m \geq n \geq n_0$ and $s,t \in D_m, s \leq t$ with $|s-t| \leq 2^{-n}
-  Let $u := \max(D_n \cap [0, s]) \<close>
 
+text \<open> Klenke (21.8). The length of the proof can be cut in half if the subproofs about t-u and s-u
+  are combined into one proof. \<close>
 lemma dist_dyadic_fixed:
   assumes mn: "n\<^sub>0 \<le> n" "n \<le> m"
   and s_dyadic: "s \<in> dyadic_interval_step m 0 T"
@@ -550,7 +578,7 @@ proof -
     apply (rule dyadic_interval_step_Max[symmetric])
     apply (rule dyadic_step_geq[OF s_dyadic])
     done
-  then have "u \<in> dyadic_interval_step n 0 T"
+  then have u_dyadic_n: "u \<in> dyadic_interval_step n 0 T"
     using dyadic_interval_step_mem dyadic_step_geq dyadic_step_leq s_dyadic u_def by force
   then have u_dyadic: "u \<in> dyadic_interval_step m 0 T"
     using mn(2) dyadic_interval_step_subset by blast
@@ -561,6 +589,10 @@ proof -
     unfolding u_def apply (simp add: field_simps)
     using floor_le_iff apply linarith
     done
+  then have "s - u < 1/2^n"
+    by auto
+  then have "s - u < 1"
+    by (smt (verit, ccfv_threshold) divide_le_eq_1 one_le_power)
   have "u \<le> t"
     using \<open>u \<le> s\<close> st(1) by linarith
   have "t < u + 2/2^n"
@@ -570,20 +602,219 @@ proof -
   then have "t - u < 1"
     by (smt (verit) mn(1) n_zero_nonzero One_nat_def Suc_leI divide_le_eq_1_pos
         power_increasing power_one_right)
-  obtain b_tu k_tu where tu_exp: "dyadic_expansion (t-u) m b_tu k_tu"
-    using dyadic_expansion_ex dyadic_interval_minus[OF u_dyadic t_dyadic \<open>u \<le> t\<close>] by blast
-  then have "k_tu = 0"
-    using dyadic_expansion_floor[OF tu_exp] \<open>t - u < 1\<close> \<open>u \<le> t\<close> by linarith
+  {
+    obtain b_tu k_tu where tu_exp: "dyadic_expansion (t-u) m b_tu k_tu"
+      using dyadic_expansion_ex dyadic_interval_minus[OF u_dyadic t_dyadic \<open>u \<le> t\<close>] by blast
+    then have "k_tu = 0"
+      using dyadic_expansion_floor[OF tu_exp] \<open>t - u < 1\<close> \<open>u \<le> t\<close> by linarith
+    have b_tu_0_1: "b_tu ! i \<in> {0,1}" if "i \<in> {0..m-1}" for i
+      using dyadic_expansionD(1,2)[OF tu_exp] that
+      by (metis Suc_pred' \<open>0 < n\<close> atLeastAtMost_iff le_imp_less_Suc le_trans less_eq_Suc_le mn(2) nth_mem subsetD)
+    text \<open> And hence $b_i (t - u) = b_i (s-u) = 0$ for $i < n$. \<close>
+    have b_t_zero: "b_tu ! i = 0" if "i+1 < n" for i
+    proof (rule ccontr)
+      assume "b_tu ! i \<noteq> 0"
+      then have "b_tu ! i = 1"
+        by (smt (verit) add_lessD1 dyadic_expansionD(1,2) insertE mn(2) nth_mem order_less_le_trans
+            singletonD subset_iff that tu_exp)
+      then have "t - u \<ge> (real_of_int 0) + 1/2^(i+1)"
+        apply (intro dyadic_expansion_nth_geq)
+        using tu_exp \<open>k_tu = 0\<close> apply blast
+         apply (metis One_nat_def Suc_eq_plus1 Suc_le_mono atLeastAtMost_iff le_trans less_Suc_eq linorder_not_le mn(2) nat_less_le that zero_order(1))
+        apply simp
+        done
+      moreover have "1/2^(n-1) \<le> 1/(2^(i+1) :: real)"
+        apply (intro divide_left_mono)
+          apply (metis that Suc_eq_plus1 Suc_leI less_diff_conv power_increasing power_one_right two_realpow_ge_one)
+        by simp_all
+      ultimately have "t - u \<ge> 1 / 2 ^ (n - 1)"
+        by linarith
+      then show False
+        using \<open>t - u < 2/2^n\<close> \<open>n > 0\<close> by (auto simp: power_diff)
+    qed
+    define t' where "t' \<equiv> \<lambda>l. (u + (\<Sum>i = n..l. b_tu!(i-1) / 2 ^ i))"
+    have "t' (n-1) = u"
+      unfolding t'_def using \<open>n > 0\<close> by simp
+    have "t' m = t"
+    proof -
+      have b_tu_eq_0: "(\<Sum> i = 1..n-1. b_tu!(i-1) / 2 ^ i) = 0"
+        by (subst sum_nonneg_eq_0_iff, auto simp add: sum_nonneg_eq_0_iff b_t_zero)
+      have "t - u = (\<Sum>i = 1..m. b_tu!(i-1) / 2 ^ i)"
+        using tu_exp[THEN dyadic_expansionD(3)] \<open>k_tu = 0\<close> by linarith
+      also have "... = (\<Sum>i = 1..n-1. b_tu!(i-1) / 2 ^ i) + (\<Sum>i = n..m. b_tu!(i-1) / 2 ^ i)"
+      proof -
+        have 1: "{1..m} = {1..n-1} \<union> {n..m}"
+          using \<open>n > 0\<close> mn(2) by fastforce
+        show ?thesis
+          by (subst 1, auto simp: sum.union_disjoint)
+      qed
+      finally have "t-u = (\<Sum>i = n..m. b_tu!(i-1) / 2 ^ i)"
+        using b_tu_eq_0 by algebra
+      then show ?thesis
+        unfolding t'_def by argo
+    qed
+    have t_pos: "t' l \<ge> 0" if \<open>l \<in> {n..m}\<close> for l
+      unfolding t'_def apply (rule add_nonneg_nonneg)
+      using dyadic_step_geq u_dyadic apply blast
+      by (simp add: sum_nonneg)
+    have t'_Suc: "t' (Suc l) = t' l + b_tu ! l / 2^(Suc l)" if "l \<in>{n-1..m-1}" for l
+      unfolding t'_def by (simp add: b_t_zero)
+    have le_add_diff: "b \<le> c - a \<Longrightarrow> a + b \<le> c" for a b c :: real
+        by argo
+    have t'_leq: "t' l \<le> t" if \<open>l \<in> {n..m}\<close> for l
+      unfolding t'_def apply (intro le_add_diff)
+        apply (simp only: tu_exp[THEN dyadic_expansionD(3)] \<open>k_tu = 0\<close> of_int_0 add_0)
+      apply (rule sum_mono2)
+      using \<open>0 < n\<close> that by auto
+    have t'_dyadic: "t' l \<in> dyadic_interval_step l 0 T" if "l \<in> {n..m}" for l
+      using that
+    proof (induct l rule: atLeastAtMost_induct)
+      case base
+      consider "b_tu ! (n - 1) = 0" | "b_tu ! (n-1) = 1"
+        using dyadic_expansion_frac_range[OF tu_exp(1), of n] \<open>0 < n\<close> mn(2) by auto
+      then show ?case
+        apply cases
+        using \<open>0 < n\<close> t'_def apply simp
+        using u_dyadic_n apply blast
+        apply (rule dyadic_interval_step_memI)
+          apply (simp add: t'_def)
+        using u_dyadic_n
+          apply (metis add_divide_distrib of_int_1 of_int_add u_def)
+         apply (simp add: mn(2) t_pos)
+        by (meson t'_leq[OF that] atLeastAtMost_iff dual_order.refl dual_order.trans dyadic_step_leq mn(2) t'_leq t_dyadic)
+    next
+      case (Suc l)
+      then have t'_dyadic_Suc: "t' l \<in> dyadic_interval_step (Suc l) 0 T"
+        using dyadic_interval_step_mono le_SucI by blast
+      from Suc have "l \<in> {0..m-1}"
+        by force
+      then consider "b_tu!l = 0" | "b_tu!l = 1"
+        using b_tu_0_1 by fastforce
+      then obtain k :: int where k: "t' l + (b_tu ! l) / 2 ^ Suc l = k / 2 ^ Suc l"
+        apply cases
+        using dyadic_interval_step_iff t'_dyadic_Suc apply auto[1]
+        by (metis add.commute add_divide_distrib dyadic_as_natural of_int_of_nat_eq of_nat_1 of_nat_Suc t'_dyadic_Suc)
+      have "t' (Suc l) \<le> t"
+        by (meson Suc atLeastAtMost_iff le_SucI less_eq_Suc_le t'_leq)
+      with Suc(1,2) show ?case
+        apply (subst t'_Suc)
+           apply (metis Suc_leD Suc_pred' \<open>0 < n\<close> atLeastAtMost_iff less_Suc_eq_le mn(2) order_less_le_trans)
+        apply (intro dyadic_interval_step_memI)
+          apply (rule exI[where x=k])
+        using k apply blast
+        using dyadic_step_geq t'_dyadic_Suc apply auto[1]
+        apply (subst t'_Suc[symmetric])
+         apply auto
+        using dyadic_step_leq order_trans t_dyadic by blast
+    qed
+    have "dist (X (t' (n-1)) \<omega>) (X (t' m) \<omega>) \<le> (\<Sum> l=Suc (n-1)..m. dist (X (t' l) \<omega>) (X (t' (l-1)) \<omega>))"
+      apply (rule triangle_ineq_sum)
+      using diff_le_self dual_order.trans mn(2) by blast
+    also have "... = (\<Sum> l=n..m. dist (X (t' l) \<omega>) (X (t' (l-1)) \<omega>))"
+      using Suc_diff_1 \<open>0 < n\<close> by presburger
+    also have "... \<le> (\<Sum> l=n..m. 2 powr (-\<gamma> * l))"
+    proof (rule sum_mono)
+      fix l assume *: "l \<in> {n..m}"
+      then have "l \<in> {n-1..m}"
+        by (metis atLeastAtMost_iff less_imp_diff_less linorder_not_less order_le_less)
+      from * have [simp]: "0 < l"
+        using \<open>0 < n\<close> by fastforce
+      from \<open>l \<in> {n..m}\<close> have "b_tu ! (l-1) \<in> {0, 1}"
+        apply (intro dyadic_expansion_frac_range)
+         apply (rule tu_exp)
+        using \<open>n > 0\<close> by simp
+      then consider (zero) "b_tu ! (l-1) = 0" | (one) "b_tu ! (l-1) = 1"
+        by fast
+      then show "dist (X (t' l) \<omega>) (X (t' (l - 1)) \<omega>) \<le> 2 powr (- \<gamma> * l)"
+      proof cases
+        case zero
+        have "{n..l} = insert l {n..l-1}"
+          using \<open>0 < n\<close> \<open>l \<in> {n..m}\<close> by auto
+        then have "sum f {n..l} = sum f {n..l-1} + f l" for f :: "nat \<Rightarrow> real"
+          by (metis (no_types, opaque_lifting) Groups.add_ac(3) Suc_le_eq Suc_pred' \<open>0 < n\<close> atLeastAtMost_iff finite_atLeastAtMost group_cancel.rule0 linorder_not_le nle_le sum.insert zero_diff zero_less_diff)
+        then have "t' l = t' (l-1)"
+          unfolding t'_def using zero by simp
+        then show ?thesis
+          by simp
+      next
+        case one
+        then have [simp]: "b_tu ! (l - Suc 0) = 1"
+          by simp
+        obtain k where k: "k \<ge> 0" "k \<le> \<lfloor>2^l * T\<rfloor>" "t' l = k/2^l"
+          using t'_dyadic \<open>l \<in> {n..m}\<close> dyadic_interval_step_iff by force
+        have "t' (l-1) \<in> dyadic_interval_step l 0 T"
+        proof (cases "l = n")
+          case True
+          then have "t' (l-1) = u"
+            using \<open>t' (n - 1) = u\<close> by presburger
+          then show "t' (l-1) \<in> dyadic_interval_step l 0 T"
+            using True u_dyadic_n by blast
+        next
+          case False
+          then have "l-1 \<in> {n..m}"
+            by (metis "*" Suc_eq_plus1 add_leD2 atLeastAtMost_iff diff_le_self dual_order.trans
+                le_antisym not_less_eq_eq ordered_cancel_comm_monoid_diff_class.le_diff_conv2)
+          then show "t' (l-1) \<in> dyadic_interval_step l 0 T"
+            using t'_dyadic dyadic_interval_step_subset diff_le_self by blast
+        qed
+        then obtain k' where k': "k' \<ge> 0" "k' \<le> \<lfloor>2^l * T\<rfloor>" "t' (l-1) = k'/2^l"
+          using dyadic_interval_step_iff by auto
+        then have t'_k: "t' (l-1) = (k-1) / 2^l"
+        proof -
+          have "t' l = t' (l-1) + real (b_tu ! (l-1)) / 2 ^ l"
+            using t'_Suc[of "l-1"] apply simp
+            using "*" diff_le_mono by presburger
+          then have "k / 2^l = t' (l-1) + 1/2^l"
+            by (simp add: k(3))
+          then show ?thesis
+            by (simp add: diff_divide_distrib)
+        qed
+        then have "k \<ge> 1"
+          using k'(1) k'(3) by auto
+        then show ?thesis
+          apply (simp only: k(3) t'_k)
+          apply (subst dist_commute)
+          apply (intro less_imp_le)
+          apply (simp only: of_int_diff of_int_1)
+          apply (rule X_dyadic_incr[of k l])
+          using k(2) apply presburger
+          using \<open>l \<in> {n..m}\<close> mn(1) by auto
+      qed
+    qed
+    also have "... = (\<Sum> l=n..m. (2 powr -\<gamma>) ^ l)"
+      apply (intro sum.cong; simp add: field_simps)
+      by (smt (verit, ccfv_SIG) powr_powr[symmetric] mult_minus_left powr_gt_zero powr_realpow)
+    also have "... \<le> 2 powr (-\<gamma> * n) / (1 - 2 powr -\<gamma>)"
+      apply (subst sum_gp)
+      using \<open>m \<ge> n\<close> apply (auto simp: field_simps)
+      using gamma_gt_0 apply auto[1]
+      apply (rule divide_right_mono)
+       apply (simp only: minus_mult_left)
+       apply (subst powr_powr[symmetric])
+       apply (subst powr_realpow[symmetric]; simp)+
+      by (metis diff_ge_0_iff_ge gamma_gt_0 less_eq_real_def neg_le_0_iff_le one_le_numeral powr_mono powr_nonneg_iff powr_zero_eq_one)
+    finally have "dist (X u \<omega>) (X t \<omega>) \<le> 2 powr (- \<gamma> * real n) / (1 - 2 powr - \<gamma>)"
+      using \<open>t' (n - 1) = u\<close> \<open>t' m = t\<close> by blast
+  } note dist_ut = this
+
+  text \<open> Copying the above for an "analogously" proof - can most likely be factored into one proof\<close>
+  obtain b_su k_su where su_exp: "dyadic_expansion (s-u) m b_su k_su"
+    using dyadic_expansion_ex dyadic_interval_minus[OF u_dyadic s_dyadic \<open>u \<le> s\<close>] by blast
+  then have "k_su = 0"
+    using dyadic_expansion_floor[OF su_exp] \<open>s - u < 1\<close> \<open>u \<le> s\<close> by linarith
+  have b_su_0_1: "b_su ! i \<in> {0,1}" if "i \<in> {0..m-1}" for i
+    using dyadic_expansionD(1,2)[OF su_exp] that
+    by (metis Suc_pred' \<open>0 < n\<close> atLeastAtMost_iff le_imp_less_Suc le_trans less_eq_Suc_le mn(2) nth_mem subsetD)
   text \<open> And hence $b_i (t - u) = b_i (s-u) = 0$ for $i < n$. \<close>
-  have b_t_zero: "b_tu ! i = 0" if "i+1 < n" for i
+  have b_s_zero: "b_su ! i = 0" if "i+1 < n" for i
   proof (rule ccontr)
-    assume "b_tu ! i \<noteq> 0"
-    then have "b_tu ! i = 1"
-      by (smt (verit, ccfv_SIG) Suc_eq_plus1 dyadic_expansionD(1,2) insert_iff le_trans 
-          less_Suc_eq mn(2) nat_less_le nth_mem singletonD subsetD that tu_exp)
-    then have "t - u \<ge> (real_of_int 0) + 1/2^(i+1)"
+    assume "b_su ! i \<noteq> 0"
+    then have "b_su ! i = 1"
+      by (smt (verit) add_lessD1 dyadic_expansionD(1,2) insertE mn(2) nth_mem order_less_le_trans
+          singletonD subset_iff that su_exp)
+    then have "s - u \<ge> (real_of_int 0) + 1/2^(i+1)"
       apply (intro dyadic_expansion_nth_geq)
-      using tu_exp \<open>k_tu = 0\<close> apply blast
+      using su_exp \<open>k_su = 0\<close> apply blast
        apply (metis One_nat_def Suc_eq_plus1 Suc_le_mono atLeastAtMost_iff le_trans less_Suc_eq linorder_not_le mn(2) nat_less_le that zero_order(1))
       apply simp
       done
@@ -591,89 +822,160 @@ proof -
       apply (intro divide_left_mono)
         apply (metis that Suc_eq_plus1 Suc_leI less_diff_conv power_increasing power_one_right two_realpow_ge_one)
       by simp_all
-    ultimately have "t - u \<ge> 1 / 2 ^ (n - 1)"
+    ultimately have "s - u \<ge> 1 / 2 ^ (n - 1)"
       by linarith
     then show False
-      using \<open>t - u < 2/2^n\<close> \<open>n > 0\<close> by (auto simp: power_diff)
+      by (smt (verit, best) \<open>s - u < 1 / 2 ^ n\<close> diff_le_self divide_left_mono mult_pos_pos power_increasing_iff zero_less_power)
   qed
-  define t' where "t' \<equiv> \<lambda>l. (u + (\<Sum>i = n..l. b_tu!(i-1) / 2 ^ i))"
-  have "t' (n-1) = u"
-    unfolding t'_def using \<open>n > 0\<close> by simp
-  have "t' m = t"
+  define s' where "s' \<equiv> \<lambda>l. (u + (\<Sum>i = n..l. b_su!(i-1) / 2 ^ i))"
+  have "s' (n-1) = u"
+    unfolding s'_def using \<open>n > 0\<close> by simp
+  have "s' m = s"
   proof -
-    have b_tu_eq_0: "(\<Sum> i = 1..n-1. b_tu!(i-1) / 2 ^ i) = 0"
-      by (subst sum_nonneg_eq_0_iff, auto simp add: sum_nonneg_eq_0_iff b_t_zero)
-    have "t - u = (\<Sum>i = 1..m. b_tu!(i-1) / 2 ^ i)"
-      using tu_exp[THEN dyadic_expansionD(3)] \<open>k_tu = 0\<close> by linarith
-    also have "... = (\<Sum>i = 1..n-1. b_tu!(i-1) / 2 ^ i) + (\<Sum>i = n..m. b_tu!(i-1) / 2 ^ i)"
+    have b_su_eq_0: "(\<Sum> i = 1..n-1. b_su!(i-1) / 2 ^ i) = 0"
+      by (subst sum_nonneg_eq_0_iff, auto simp add: sum_nonneg_eq_0_iff b_s_zero)
+    have "s - u = (\<Sum>i = 1..m. b_su!(i-1) / 2 ^ i)"
+      using su_exp[THEN dyadic_expansionD(3)] \<open>k_su = 0\<close> by linarith
+    also have "... = (\<Sum>i = 1..n-1. b_su!(i-1) / 2 ^ i) + (\<Sum>i = n..m. b_su!(i-1) / 2 ^ i)"
     proof -
       have 1: "{1..m} = {1..n-1} \<union> {n..m}"
         using \<open>n > 0\<close> mn(2) by fastforce
       show ?thesis
         by (subst 1, auto simp: sum.union_disjoint)
     qed
-    finally have "t-u = (\<Sum>i = n..m. b_tu!(i-1) / 2 ^ i)"
-      using b_tu_eq_0 by algebra
+    finally have "s-u = (\<Sum>i = n..m. b_su!(i-1) / 2 ^ i)"
+      using b_su_eq_0 by algebra
     then show ?thesis
-      unfolding t'_def by argo
+      unfolding s'_def by argo
   qed
-  have t'_Suc: "t' (Suc l) = t' l + b_tu ! l / 2^(Suc l)" if "l \<in>{n..m-1}" for l
-    unfolding t'_def by (simp add: b_t_zero)
-  have t'_inc: "t' l - t' (l-1) \<le> 1/2^l" if "l \<in> {n..m}" for l
-  proof -
-    have *: "{n..l} - {n..l - Suc 0} = {l}"
-      using that \<open>n > 0\<close> by fastforce
-    show ?thesis
-      unfolding t'_def apply simp
-      apply (subst sum_diff[symmetric])
-      apply blast
-       apply auto[1]
-      apply (subst *)
-      apply auto
-      apply (rule divide_right_mono)
-      using dyadic_expansion_frac_range[OF tu_exp, of l] that \<open>n > 0\<close> apply force
-      by simp
-  qed
-  have t'_dyadic: "t' l \<in> dyadic_interval_step l 0 T" if "l \<in> {n..m}" for l
+  have s_pos: "s' l \<ge> 0" if \<open>l \<in> {n..m}\<close> for l
+    unfolding s'_def apply (rule add_nonneg_nonneg)
+    using dyadic_step_geq u_dyadic apply blast
+    by (simp add: sum_nonneg)
+  have s'_Suc: "s' (Suc l) = s' l + b_su ! l / 2^(Suc l)" if "l \<in>{n-1..m-1}" for l
+    unfolding s'_def by (simp add: b_s_zero)
+  have le_add_diff: "b \<le> c - a \<Longrightarrow> a + b \<le> c" for a b c :: real
+      by argo
+  have s'_leq: "s' l \<le> s" if \<open>l \<in> {n..m}\<close> for l
+    unfolding s'_def apply (intro le_add_diff)
+      apply (simp only: su_exp[THEN dyadic_expansionD(3)] \<open>k_su = 0\<close> of_int_0 add_0)
+    apply (rule sum_mono2)
+    using \<open>0 < n\<close> that by auto
+  have s'_dyadic: "s' l \<in> dyadic_interval_step l 0 T" if "l \<in> {n..m}" for l
     using that
   proof (induct l rule: atLeastAtMost_induct)
     case base
+    consider "b_su ! (n - 1) = 0" | "b_su ! (n-1) = 1"
+      using dyadic_expansion_frac_range[OF su_exp(1), of n] \<open>0 < n\<close> mn(2) by auto
     then show ?case
-      unfolding t'_def apply auto sorry
+      apply cases
+      using \<open>0 < n\<close> s'_def apply simp
+      using u_dyadic_n apply blast
+      apply (rule dyadic_interval_step_memI)
+        apply (simp add: s'_def)
+      using u_dyadic_n
+        apply (metis add_divide_distrib of_int_1 of_int_add u_def)
+       apply (simp add: mn(2) s_pos)
+      by (meson s'_leq[OF that] atLeastAtMost_iff dual_order.refl dual_order.trans dyadic_step_leq mn(2) s'_leq s_dyadic)
   next
     case (Suc l)
-    then show ?case sorry
+    then have s'_dyadic_Suc: "s' l \<in> dyadic_interval_step (Suc l) 0 T"
+      using dyadic_interval_step_mono le_SucI by blast
+    from Suc have "l \<in> {0..m-1}"
+      by force
+    then consider "b_su!l = 0" | "b_su!l = 1"
+      using b_su_0_1 by fastforce
+    then obtain k :: int where k: "s' l + (b_su ! l) / 2 ^ Suc l = k / 2 ^ Suc l"
+      apply cases
+      using dyadic_interval_step_iff s'_dyadic_Suc apply auto[1]
+      by (metis add.commute add_divide_distrib dyadic_as_natural of_int_of_nat_eq of_nat_1 of_nat_Suc s'_dyadic_Suc)
+    have "s' (Suc l) \<le> s"
+      by (meson Suc atLeastAtMost_iff le_SucI less_eq_Suc_le s'_leq)
+    with Suc(1,2) show ?case
+      apply (subst s'_Suc)
+         apply (metis Suc_leD Suc_pred' \<open>0 < n\<close> atLeastAtMost_iff less_Suc_eq_le mn(2) order_less_le_trans)
+      apply (intro dyadic_interval_step_memI)
+        apply (rule exI[where x=k])
+      using k apply blast
+      using dyadic_step_geq s'_dyadic_Suc apply auto[1]
+      apply (subst s'_Suc[symmetric])
+       apply auto
+      using dyadic_step_leq order_trans s_dyadic by blast
   qed
-  have "dist (X (t' (n-1)) \<omega>) (X (t' m) \<omega>) \<le> (\<Sum> l=Suc (n-1)..m. dist (X (t' l) \<omega>) (X (t' (l-1)) \<omega>))"
+  have "dist (X (s' (n-1)) \<omega>) (X (s' m) \<omega>) \<le> (\<Sum> l=Suc (n-1)..m. dist (X (s' l) \<omega>) (X (s' (l-1)) \<omega>))"
     apply (rule triangle_ineq_sum)
     using diff_le_self dual_order.trans mn(2) by blast
-  also have "... = (\<Sum> l=n..m. dist (X (t' l) \<omega>) (X (t' (l-1)) \<omega>))"
+  also have "... = (\<Sum> l=n..m. dist (X (s' l) \<omega>) (X (s' (l-1)) \<omega>))"
     using Suc_diff_1 \<open>0 < n\<close> by presburger
-    (* Need to add a theorem to get k' into the form k/2 ^ n) *)
   also have "... \<le> (\<Sum> l=n..m. 2 powr (-\<gamma> * l))"
   proof (rule sum_mono)
-    fix l assume "l \<in> {n..m}"
-    then have "b_tu ! (l-1) \<in> {0, 1}"
+    fix l assume *: "l \<in> {n..m}"
+    then have "l \<in> {n-1..m}"
+      by (metis atLeastAtMost_iff less_imp_diff_less linorder_not_less order_le_less)
+    from * have [simp]: "0 < l"
+      using \<open>0 < n\<close> by fastforce
+    from \<open>l \<in> {n..m}\<close> have "b_su ! (l-1) \<in> {0, 1}"
       apply (intro dyadic_expansion_frac_range)
-       apply (rule tu_exp)
+       apply (rule su_exp)
       using \<open>n > 0\<close> by simp
-    then consider (zero) "b_tu ! (l-1) = 0" | (one) "b_tu ! (l-1) = 1"
+    then consider (zero) "b_su ! (l-1) = 0" | (one) "b_su ! (l-1) = 1"
       by fast
-    then show "dist (X (t' l) \<omega>) (X (t' (l - 1)) \<omega>) \<le> 2 powr (- \<gamma> * l)"
+    then show "dist (X (s' l) \<omega>) (X (s' (l - 1)) \<omega>) \<le> 2 powr (- \<gamma> * l)"
     proof cases
       case zero
       have "{n..l} = insert l {n..l-1}"
         using \<open>0 < n\<close> \<open>l \<in> {n..m}\<close> by auto
       then have "sum f {n..l} = sum f {n..l-1} + f l" for f :: "nat \<Rightarrow> real"
-        by (metis (no_types, opaque_lifting) Groups.add_ac(3) Suc_le_eq Suc_pred' \<open>0 < n\<close> atLeastAtMost_iff finite_atLeastAtMost group_cancel.rule0 linorder_not_le nle_le sum.insert zero_diff zero_less_diff)
-      then have "t' l = t' (l-1)"
-        unfolding t'_def using zero by simp
+        by (metis (no_types, opaque_lifting) Groups.add_ac(3) Suc_le_eq Suc_pred' \<open>0 < n\<close> 
+            atLeastAtMost_iff finite_atLeastAtMost group_cancel.rule0 linorder_not_le nle_le
+            sum.insert zero_diff zero_less_diff)
+      then have "s' l = s' (l-1)"
+        unfolding s'_def using zero by simp
       then show ?thesis
         by simp
     next
       case one
+      then have [simp]: "b_su ! (l - Suc 0) = 1"
+        by simp
+      obtain k where k: "k \<ge> 0" "k \<le> \<lfloor>2^l * T\<rfloor>" "s' l = k/2^l"
+        using s'_dyadic \<open>l \<in> {n..m}\<close> dyadic_interval_step_iff by force
+      have "s' (l-1) \<in> dyadic_interval_step l 0 T"
+      proof (cases "l = n")
+        case True
+        then have "s' (l-1) = u"
+          using \<open>s' (n - 1) = u\<close> by presburger
+        then show "s' (l-1) \<in> dyadic_interval_step l 0 T"
+          using True u_dyadic_n by blast
+      next
+        case False
+        then have "l-1 \<in> {n..m}"
+          by (metis "*" Suc_eq_plus1 add_leD2 atLeastAtMost_iff diff_le_self dual_order.trans
+              le_antisym not_less_eq_eq ordered_cancel_comm_monoid_diff_class.le_diff_conv2)
+        then show "s' (l-1) \<in> dyadic_interval_step l 0 T"
+          using s'_dyadic dyadic_interval_step_subset diff_le_self by blast
+      qed
+      then obtain k' where k': "k' \<ge> 0" "k' \<le> \<lfloor>2^l * T\<rfloor>" "s' (l-1) = k'/2^l"
+        using dyadic_interval_step_iff by auto
+      then have s'_k: "s' (l-1) = (k-1) / 2^l"
+      proof -
+        have "s' l = s' (l-1) + real (b_su ! (l-1)) / 2 ^ l"
+          using s'_Suc[of "l-1"] apply simp
+          using "*" diff_le_mono by presburger
+        then have "k / 2^l = s' (l-1) + 1/2^l"
+          by (simp add: k(3))
+        then show ?thesis
+          by (simp add: diff_divide_distrib)
+      qed
+      then have "k \<ge> 1"
+        using k'(1) k'(3) by auto
       then show ?thesis
-        using t'_dyadic X_dyadic_incr sorry
+        apply (simp only: k(3) s'_k)
+        apply (subst dist_commute)
+        apply (intro less_imp_le)
+        apply (simp only: of_int_diff of_int_1)
+        apply (rule X_dyadic_incr[of k l])
+        using k(2) apply presburger
+        using \<open>l \<in> {n..m}\<close> mn(1) by auto
     qed
   qed
   also have "... = (\<Sum> l=n..m. (2 powr -\<gamma>) ^ l)"
@@ -688,8 +990,10 @@ proof -
      apply (subst powr_powr[symmetric])
      apply (subst powr_realpow[symmetric]; simp)+
     by (metis diff_ge_0_iff_ge gamma_gt_0 less_eq_real_def neg_le_0_iff_le one_le_numeral powr_mono powr_nonneg_iff powr_zero_eq_one)
-  finally show "dist (X t \<omega>) (X s \<omega>) \<le> 2 * (2 powr (-\<gamma> * n)) / (1 - 2 powr - \<gamma>)"
-    sorry (* Need analogous reasoning for u - s *)
+  finally have "dist (X u \<omega>) (X s \<omega>) \<le> 2 powr (- \<gamma> * real n) / (1 - 2 powr - \<gamma>)"
+    using \<open>s' (n - 1) = u\<close> \<open>s' m = s\<close> by blast
+  then show "dist (X t \<omega>) (X s \<omega>) \<le> 2 * (2 powr (-\<gamma> * n)) / (1 - 2 powr - \<gamma>)"
+    using dist_ut by metric
 qed
 
 definition "C\<^sub>0 \<equiv> 2 * 2 powr \<gamma> / (1 - 2 powr - \<gamma>)"
@@ -697,6 +1001,7 @@ definition "C\<^sub>0 \<equiv> 2 * 2 powr \<gamma> / (1 - 2 powr - \<gamma>)"
 lemma C_zero_ge[simp]: "C\<^sub>0 > 0"
   by (smt (verit, ccfv_SIG) C\<^sub>0_def divide_pos_pos gamma_gt_0 powr_eq_one_iff powr_less_mono)
 
+text \<open> Klenke (21.9) \<close>
 text \<open> Let s, t \<in> D with $|s-t| \leq \frac{1}{2^n_0}$. By choosing the minimal $n \geq n_0$ such
   that $|t-s| \geq 2^{-n}$, we obtain by @{thm dist_dyadic_fixed}:
   \[|X_t(\omega) - X_s(\omega)| \leq C_0 |t-s|^\gamma\]\<close>
@@ -798,6 +1103,7 @@ lemma C\<^sub>0_le_K: "C\<^sub>0 \<le> K"
 lemma K_pos: "0 < K"
   using C\<^sub>0_le_K C_zero_ge by linarith
 
+text \<open> Klenke (21.10) \<close>
 lemma X_dyadic_le_K':
   assumes dyadic: "s \<in> dyadic_interval 0 T" "t \<in> dyadic_interval 0 T" 
     and st: "s \<le> t"
@@ -925,6 +1231,10 @@ lemma Lim_exists: "\<exists>L. ((\<lambda>s. X s \<omega>) \<longlongrightarrow>
   using that apply (simp add: dyadic_interval_dense)
   by blast
 
+lemma Lim_unique: "\<exists>!L. ((\<lambda>s. X s \<omega>) \<longlongrightarrow> L) (at t within (dyadic_interval 0 T))" 
+  if "t \<in> {0..T}"
+  by (metis that Lim_exists dyadic_interval_islimpt tendsto_Lim trivial_limit_within zero_le_T)
+
 definition "L \<equiv> (\<lambda>t. (Lim (at t within dyadic_interval 0 T) (\<lambda>s. X s \<omega>)))"
 
 lemma X_tendsto_L:
@@ -978,129 +1288,116 @@ corollary L_holder: "\<gamma>-holder_on {0..T} L"
 corollary L_local_holder: "local_holder_on \<gamma> {0..T} L"
   using holder_implies_local_holder[OF L_holder] by blast
 
-definition X_tilde :: "real \<Rightarrow> 'b" where
-  "X_tilde \<equiv> \<lambda>t. if t \<in> dyadic_interval 0 T then X t \<omega> else L t"
-
-lemma dist_X_tilde:
-  assumes s: "s \<in> {0..T}"
-      and t: "t \<in> {0..T}"
-    shows "dist (X_tilde s) (X_tilde t) \<le> K * dist s t powr \<gamma>"
+lemma X_dyadic_eq_L:
+  assumes "t \<in> dyadic_interval 0 T"
+  shows "X t \<omega> = L t"
 proof -
-  consider "s \<in> dyadic_interval 0 T \<and> t \<in> dyadic_interval 0 T"
-    | "s \<notin> dyadic_interval 0 T \<and> t \<in> dyadic_interval 0 T"
-    | "s \<in> dyadic_interval 0 T \<and> t \<notin> dyadic_interval 0 T"
-    | "s \<notin> dyadic_interval 0 T \<and> t \<notin> dyadic_interval 0 T"
-    by blast
+  have "((\<lambda>x. X x \<omega>) \<longlongrightarrow> X t \<omega>) (at t within dyadic_interval 0 T)"
+    using continuous_within[symmetric] uniformly_continuous_dyadic uniformly_continuous_imp_continuous
+          continuous_on_eq_continuous_within assms by fast
   then show ?thesis
-  proof cases
-    case 1
-    then show ?thesis
-      by (simp add: X_tilde_def X_dyadic_le_K)
-  next
-    case 2
-    then show ?thesis
-      sorry
-  next
-    case 3
-    then show ?thesis sorry
-  next
-    case 4
-    then show ?thesis
-      unfolding X_tilde_def by (simp add: L_dist_K[OF assms])
-  qed
+    by (metis L_def assms dyadic_interval_islimpt dyadic_interval_subset_interval subsetD
+        tendsto_Lim trivial_limit_within zero_le_T)
 qed
-
-corollary holder_X_tilde: "\<gamma>-holder_on {0..T} X_tilde"
-  using K_pos dist_X_tilde by (auto intro!: holder_onI[OF gamma_0_1] exI[where x=K])
-
-corollary local_holder_X_tilde: "local_holder_on \<gamma> {0..T} X_tilde"
-      using holder_X_tilde holder_implies_local_holder by blast
 end
+
+section \<open> Modification \<close>
 
 definition default :: 'b where "default = (SOME x. True)"
 
-definition X_tilde' :: "real \<Rightarrow> 'a \<Rightarrow> 'b" where
-    "X_tilde' \<equiv> (\<lambda>t \<omega>. if \<omega> \<in> N then default else
-                      (if t \<in> dyadic_interval 0 T then X t \<omega>
-               else Lim (at t within dyadic_interval 0 T) (\<lambda>s. X s \<omega>)))"
+definition X_tilde :: "real \<Rightarrow> 'a \<Rightarrow> 'b" where
+ "X_tilde \<equiv> (\<lambda>t \<omega>. if \<omega> \<in> N then default else (Lim (at t within dyadic_interval 0 T) (\<lambda>s. X s \<omega>)))"
 
-lemma local_holder_X_tilde': "local_holder_on \<gamma> {0..T} (\<lambda>t. X_tilde' t \<omega>)"
+lemma X_tilde_not_N_Lim:
+  assumes "\<omega> \<in> space source - N"
+  shows "X_tilde t \<omega> = Lim (at t within dyadic_interval 0 T) (\<lambda>s. X s \<omega>)"
+  using assms X_tilde_def by auto
+
+lemma X_tilde_not_N_L:
+  assumes "\<omega> \<in> space source - N"
+  shows "X_tilde t \<omega> = L \<omega> t"
+  using assms X_tilde_def L_def[OF assms] by auto
+
+lemma local_holder_X_tilde: "local_holder_on \<gamma> {0..T} (\<lambda>t. X_tilde t \<omega>)"
     if "\<omega> \<in> space source" for \<omega>
 proof (cases "\<omega> \<in> N")
   case True
   then show ?thesis
-    unfolding X_tilde'_def using local_holder_const by fastforce
+    unfolding X_tilde_def using local_holder_const by fastforce
 next
   case False
   then have 1: "\<omega> \<in> space source - N"
     using that by blast
   show ?thesis
-    using local_holder_X_tilde[OF 1] L_def[OF 1]
-    unfolding X_tilde_def[OF 1] X_tilde'_def
+    using L_local_holder[OF 1] X_tilde_not_N_L[OF 1]
     by (simp only: False if_False)
 qed
 
-lemma X_eq_X_tilde_AE: "AE \<omega> in source. X t \<omega> = X_tilde' t \<omega>" if "t \<in> {0..T}" for t
-proof (cases "t \<in> dyadic_interval 0 T")
-  case True
-  then have "\<omega> \<notin> N \<Longrightarrow> X t \<omega> = X_tilde' t \<omega>" for \<omega>
-    unfolding X_tilde'_def by (simp only: if_True if_False)
-  then have "{\<omega>. X t \<omega> \<noteq> X_tilde' t \<omega>} \<subseteq> N"
-    by blast
-  then show ?thesis
-    apply (intro AE_I[where N="N"])
-    using N_null by auto
-next
-  case False
-  have "AE \<omega> in source. X t \<omega> = Lim (at t within dyadic_interval 0 T) (\<lambda>s. X s \<omega>)"
-  proof -
-    have "tendsto_measure source X (\<lambda>\<omega>. Lim (at t within dyadic_interval 0 T) (\<lambda>s. X s \<omega>)) (at t within dyadic_interval 0 T)"
-      apply (intro measure_conv_imp_AE_at_within)
-      unfolding Topological_Spaces.Lim_def apply (rule theI')
-      using Lim_exists
-      sorry
-    then show ?thesis
-      sorry
-  qed
-  moreover have "X_tilde' t \<omega> = Lim (at t within dyadic_interval 0 T) (\<lambda>s. X s \<omega>)" 
-      if "\<omega> \<in> space source - N" for \<omega>
-    unfolding X_tilde'_def using False that by auto
-  then have "AE \<omega> in source. X_tilde' t \<omega> = Lim (at t within dyadic_interval 0 T) (\<lambda>s. X s \<omega>)"
-    apply (simp add: eventually_ae_filter)
-    apply (intro bexI[where x=N])
-    using False X_tilde'_def apply auto[1]
-    using N_null by blast
-  ultimately show ?thesis
-    by force
-qed
-end
+corollary X_tilde_eq_L_AE: "AE \<omega> in source. X_tilde t \<omega> = L \<omega> t"
+  apply (rule AE_I[where N=N])
+      apply (smt (verit, del_insts) X_tilde_def Diff_iff L_def mem_Collect_eq subsetI)
+  using N_null apply blast+
+  done
 
-(* Needed for X_tilde_measurable *)
-lemma borel_measurable_at_within [measurable]:
-  assumes [measurable]: "\<And>t. t \<in> T \<Longrightarrow> f t \<in> borel_measurable M"
-      (* and convergent: "\<exists>l. (f \<longlongrightarrow> l) (at x within T)" *)
-  shows "(\<lambda>\<omega>. Lim (at x within T) (\<lambda>t. f t \<omega>)) \<in> borel_measurable M"
-  sorry
-  find_theorems Lim measurable
-  thm borel_measurable_lim
-  thm convergent_limsup_cl
-  thm Liminf_def
-  find_theorems Limsup Lim
-  thm lim_imp_Limsup
-  find_theorems Lim at_within
+corollary X_tilde_eq_Lim_AE:
+  "AE \<omega> in source. X_tilde t \<omega> = Lim (at t within dyadic_interval 0 T) (\<lambda>s. X s \<omega>)"
+  apply (rule AE_I[where N=N])
+      apply (smt (verit, del_insts) X_tilde_def Diff_iff L_def mem_Collect_eq subsetI)
+  using N_null apply blast+
+  done
+
+lemma X_tilde_tendsto_AE: "t \<in> {0..T} \<Longrightarrow> tendsto_AE source X (X_tilde t) (at t within dyadic_interval 0 T)"
+  apply (unfold tendsto_AE_def)
+  apply (rule AE_I3[where N=N])
+   apply (subst X_tilde_not_N_Lim, argo)
+  unfolding t2_space_class.Lim_def apply (rule the1I2)
+  using Lim_unique apply presburger
+   apply blast
+  using N_null by blast
+
+end
 
 context Kolmogorov_Chentsov_finite
 begin
 
-lemma X_tilde_measurable[measurable]: "X_tilde' t \<in> borel_measurable source" if "t \<in> {0..T}" for t
-  unfolding X_tilde'_def by measurable
+text \<open> By (21.5) @{thm conv_in_prob_finite} and (21.11) @{thm L_def}, P[X \<noteq> \tilde{X}] = 0\<close>
+
+lemma X_tilde_measurable[measurable]:
+  assumes "t \<in> {0..T}"
+  shows "X_tilde t \<in> borel_measurable source"
+proof -
+  let ?Lim = "(\<lambda>\<omega>. Lim (at t within dyadic_interval 0 T) (\<lambda>s. process X s \<omega>))"
+  have "?Lim \<in> borel_measurable (restrict_space source (space source - N))"
+    unfolding X_tilde_def apply measurable
+    using measurable_id measurable_restrict_space1 apply blast
+    using assms Lim_exists space_restrict_space apply simp
+    using assms dyadic_interval_islimpt trivial_limit_within zero_le_T by blast
+  then have "(\<lambda>\<omega>. if \<omega> \<in> space source - N then ?Lim \<omega> else default) \<in> borel_measurable source"
+    by (subst measurable_restrict_space_iff[symmetric]; simp)
+  then show ?thesis
+    apply (subst measurable_cong[where g="(\<lambda>\<omega>. if \<omega> \<in> space source - N then ?Lim \<omega> else default)"])
+    unfolding X_tilde_def by auto
+qed
+
+lemma X_eq_X_tilde_AE: "AE \<omega> in source. X t \<omega> = X_tilde t \<omega>" if "t \<in> {0..T}" for t
+    apply (rule sigma_finite_measure.tendsto_measure_at_within_eq_AE[where f="process X" and S="dyadic_interval 0 T"])
+    using proc_source.sigma_finite_measure_axioms apply blast
+    using X_borel_measurable apply blast
+        apply measurable
+    using X_tilde_def apply simp
+    using that apply simp
+    using tendsto_measure_mono[OF at_le[OF dyadic_interval_subset_interval] conv_in_prob_finite] that
+      apply auto[1]
+    using X_borel_measurable X_tilde_measurable X_tilde_tendsto_AE measure_conv_imp_AE_at_within that apply blast
+    using dyadic_interval_islimpt that trivial_limit_within zero_le_T by blast
 
 lemma X_tilde_modification: "modification (restrict_index X {0..T})
-   (prob_space.process_of source (proc_target X) {0..T} X_tilde' default)"
+   (prob_space.process_of source (proc_target X) {0..T} X_tilde default)"
   apply (intro modificationI compatibleI)
      apply simp_all
   apply (subst restrict_index_source)
-  using X_eq_X_tilde_AE by blast
+  apply (auto simp: X_eq_X_tilde_AE)
+  done
 end
 
 text \<open> We have now shown that we can construct a modification of X for any interval {0..T}. We want
@@ -1125,11 +1422,15 @@ proof -
   have "modification (restrict_index X {0..T}) (Mod T) \<and> 
     (\<forall>x\<in>space source. local_holder_on \<gamma> {0..T} (\<lambda>t. (Mod T) t x))"
     unfolding Mod_def apply (rule someI_ex)
-    apply (rule exI[where x="prob_space.process_of source (proc_target X) {0..T} X_tilde' default"])    
+    apply (rule exI[where x="prob_space.process_of source (proc_target X) {0..T} X_tilde default"])    
     apply safe
-     apply (fact  X_tilde_modification)
-    using local_holder_X_tilde' apply auto
-    by (smt (verit, del_insts) atLeastAtMost_iff local_holder_on_cong)
+     apply (fact X_tilde_modification)
+    using local_holder_X_tilde apply auto
+    using X_tilde_measurable apply auto
+    apply (subst local_holder_on_cong[OF refl refl])
+     apply simp
+    apply blast
+    done
   then show "modification (restrict_index X {0..T}) (Mod T)"
             "(\<forall>x\<in>space source. local_holder_on \<gamma> {0..T} (\<lambda>t. (Mod T) t x)) " 
     by blast+
@@ -1267,7 +1568,7 @@ proof (intro modificationI ballI)
       obtain N where "{x \<in> space source. (restrict_index X {0..real_of_int \<lfloor>t\<rfloor> + 1}) t x \<noteq> (Mod (real_of_int \<lfloor>t\<rfloor> + 1)) t x} \<subseteq> N \<and>
     N \<in> null_sets (proc_source (restrict_index X {0..(real_of_int \<lfloor>t\<rfloor> + 1)}))"
         using Mod(1)[OF \<open>real_of_int \<lfloor>t\<rfloor> + 1 > 0\<close>, THEN modification_null_set, of t]
-        using \<open>t \<in> {0..}\<close> sorry
+        using \<open>t \<in> {0..}\<close> by fastforce
       then show ?thesis
         by (smt (verit, ccfv_threshold) DiffE mem_Collect_eq restrict_index_process restrict_index_source subset_eq)
     qed
@@ -1358,6 +1659,11 @@ lemma local_holder_X_mod_process: "local_holder_on \<gamma> {0..} (\<lambda>t. X
   unfolding X_mod_process_def
   by (smt (verit, best) Mod_measurable UNIV_I local_holder_X_mod local_holder_on_cong
       proc_source.process_process_of space_borel target_borel)
+
+theorem continuous_modification:
+  "\<exists>X'. modification X X' \<and> (\<forall>\<omega>. local_holder_on \<gamma> {0..} (\<lambda>t. X' t \<omega>))"
+  apply (rule exI[where x=X_mod_process])
+  using local_holder_X_mod_process modification_X_mod_process by auto
 end
 
 end

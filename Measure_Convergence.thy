@@ -62,15 +62,34 @@ proof -
     by (simp add: sets.Int_space_eq2[symmetric, where M=M])
 qed
 
-lemma (in finite_measure) tendsto_measure_finite_leq: "tendsto_measure M f' f F \<longleftrightarrow>
+lemma (in finite_measure) tendsto_measure_finite_leq:
+  assumes [measurable]: "\<And>n. f' n \<in> borel_measurable M" "f \<in> borel_measurable M"
+  shows "tendsto_measure M f' f F \<longleftrightarrow>
    (\<forall>\<epsilon> > 0. ((\<lambda>n. measure M {\<omega> \<in> space M. dist (f' n \<omega>) (f \<omega>) \<ge> \<epsilon>}) \<longlongrightarrow> 0) F)" (is "?L \<longleftrightarrow> ?R")
 proof (rule iffI, goal_cases)
   case 1
-  then show ?case
-    apply safe sorry
+  {
+    fix \<epsilon> :: real assume "\<epsilon> > 0"
+    then have "((\<lambda>n. measure M {\<omega> \<in> space M. dist (f' n \<omega>) (f \<omega>) > \<epsilon>/2}) \<longlongrightarrow> 0) F"
+      using finite_tendsto_measureD[OF 1] half_gt_zero by blast
+    then have "((\<lambda>n. measure M {\<omega> \<in> space M. dist (f' n \<omega>) (f \<omega>) \<ge> \<epsilon>}) \<longlongrightarrow> 0) F"
+      apply (rule metric_tendsto_imp_tendsto)
+      using \<open>\<epsilon> > 0\<close> by (auto intro!: eventuallyI finite_measure_mono)
+  }
+   then show ?case
+     by simp
 next
   case 2
-  then show ?case sorry
+  {
+    fix \<epsilon> :: real assume "\<epsilon> > 0"
+    then have *: "((\<lambda>n. \<P>(\<omega> in M. \<epsilon> \<le> dist (f' n \<omega>) (f \<omega>))) \<longlongrightarrow> 0) F"
+      using 2 by blast
+    then have "((\<lambda>n. \<P>(\<omega> in M. \<epsilon> < dist (f' n \<omega>) (f \<omega>))) \<longlongrightarrow> 0) F"
+      apply (rule metric_tendsto_imp_tendsto)
+      using \<open>\<epsilon> > 0\<close> by (auto intro!: eventuallyI finite_measure_mono)
+  }
+  then show ?case
+    by (simp add: finite_tendsto_measureI[OF assms])
 qed
 
 abbreviation "LIMSEQ_measure M f l \<equiv> tendsto_measure M f l sequentially"
@@ -120,22 +139,13 @@ qed
 
 lemma measure_Lim_within_LIMSEQ:
   fixes a :: "'a :: first_countable_topology"
+  assumes "\<And>t. X t \<in> borel_measurable M" "L \<in> borel_measurable M"
   assumes "\<And>S. \<lbrakk>(\<forall>n. S n \<noteq> a \<and> S n \<in> T); S \<longlonglongrightarrow> a\<rbrakk> \<Longrightarrow> LIMSEQ_measure M (\<lambda>n. X (S n)) L"
   shows "tendsto_measure M X L (at a within T)"
-proof (intro tendsto_measureI, goal_cases X L conv)
-  case (X n)
-  then show ?case
-    using assms[where S="(\<lambda>_. n)", THEN tendsto_measure_measurable] 
-next
-  case L
-  then show ?case sorry
-next
-  case conv
-  then show ?case 
+  apply (intro tendsto_measureI[OF assms(1,2)])
     unfolding tendsto_measure_def[where l=L] tendsto_def apply safe
     apply (rule sequentially_imp_eventually_within)
     using assms unfolding LIMSEQ_measure_def tendsto_def by presburger
-qed
 
 definition tendsto_AE :: "'b measure \<Rightarrow> ('a \<Rightarrow> 'b \<Rightarrow> 'c :: topological_space) \<Rightarrow> ('b \<Rightarrow> 'c) \<Rightarrow> 'a filter \<Rightarrow> bool" where
 "tendsto_AE M f' l F \<longleftrightarrow> (AE \<omega> in M. ((\<lambda>n. f' n \<omega>) \<longlongrightarrow> l \<omega>) F)"
@@ -147,7 +157,7 @@ lemma tendsto_AE_within_LIMSEQ:
   fixes a :: "'a :: first_countable_topology"
   assumes "\<And>S. \<lbrakk>(\<forall>n. S n \<noteq> a \<and> S n \<in> T); S \<longlonglongrightarrow> a\<rbrakk> \<Longrightarrow> tendsto_AE M (\<lambda>n. X (S n)) L sequentially"
   shows "tendsto_AE M X L (at a within T)"
-  sorry
+  oops
 
 lemma LIMSEQ_dominated_convergence:
   fixes X :: "nat \<Rightarrow> real"
@@ -176,8 +186,8 @@ qed
 
 text \<open> Klenke remark 6.4 \<close>
 lemma measure_conv_imp_AE_sequentially: 
-  assumes "tendsto_AE M f' f sequentially"
-    and [measurable]: "f \<in> borel_measurable M" "\<And>n. f' n \<in> borel_measurable M"
+  assumes [measurable]: "\<And>n. f' n \<in> borel_measurable M" "f \<in> borel_measurable M"
+    and "tendsto_AE M f' f sequentially"
   shows "LIMSEQ_measure M f' f"
 proof (unfold tendsto_measure_def, safe)
   fix \<epsilon> :: real assume "0 < \<epsilon>"
@@ -239,7 +249,7 @@ proof (unfold tendsto_measure_def, safe)
     by (meson A \<open>\<And>n. D n \<in> sets M\<close> fmeasurableD2 fmeasurable_inter top.not_eq_extremum)
   then show "(\<lambda>n. measure M ({\<omega> \<in> space M. \<epsilon> < dist (f' n \<omega>) (f \<omega>)} \<inter> A)) \<longlonglongrightarrow> 0"
     by (simp add: LIMSEQ_dominated_convergence[OF measure_D_0])
-qed
+qed simp_all
 
 corollary LIMSEQ_measure_pointwise:
   assumes "\<And>x. (\<lambda>n. f n x) \<longlonglongrightarrow> f' x" "\<And>n. f n \<in> borel_measurable M" "f' \<in> borel_measurable M"
@@ -256,21 +266,34 @@ proof (intro measure_Lim_within_LIMSEQ)
     using assms(1) by (simp add: tendsto_at_iff_sequentially o_def)
   then show "LIMSEQ_measure M (\<lambda>n. f (S n)) f'"
     by (simp add: LIMSEQ_measure_pointwise assms(2,3))
-qed
+qed (simp_all add: assms)
 
 corollary measure_conv_imp_AE_at_within:
   fixes x :: "'a :: first_countable_topology"
-  assumes "tendsto_AE M f' f (at x within S)"
-    and [measurable]: "f \<in> borel_measurable M" "\<And>n. n \<in> S \<Longrightarrow> f' n \<in> borel_measurable M"
+  assumes [measurable]: "\<And>n. f' n \<in> borel_measurable M" "f \<in> borel_measurable M"
+      and "tendsto_AE M f' f (at x within S)"
   shows "tendsto_measure M f' f (at x within S)"
-  apply (rule measure_Lim_within_LIMSEQ)
-  apply (rule measure_conv_imp_AE_sequentially)
-  using assms sorry
+proof (rule measure_Lim_within_LIMSEQ[OF assms(1,2)])
+  fix s assume *: "\<forall>n. s n \<noteq> x \<and> s n \<in> S" "s \<longlonglongrightarrow> x"
+  have AE_seq: "AE \<omega> in M. \<forall>X. (\<forall>i. X i \<in> S - {x}) \<longrightarrow> X \<longlonglongrightarrow> x \<longrightarrow> ((\<lambda>n. f' n \<omega>) \<circ> X) \<longlonglongrightarrow> f \<omega>"
+    using assms(3) by (simp add: tendsto_AE_def tendsto_at_iff_sequentially)
+  then have "AE \<omega> in M. (\<forall>i. s i \<in> S - {x}) \<longrightarrow> s \<longlonglongrightarrow> x \<longrightarrow> ((\<lambda>n. f' n \<omega>) \<circ> s) \<longlonglongrightarrow> f \<omega>"
+    by force
+  then have "AE \<omega> in M. ((\<lambda>n. f' n \<omega>) \<circ> s) \<longlonglongrightarrow> f \<omega>"
+    using * by force
+  then have "tendsto_AE M (\<lambda>n. f' (s n)) f sequentially"
+    unfolding tendsto_AE_def comp_def by blast
+  then show "LIMSEQ_measure M (\<lambda>n. f' (s n)) f"
+    by (rule measure_conv_imp_AE_sequentially[OF assms(1,2)])
+qed
 
 (* The finiteness arguments in this proof are cumbersome, ideally come up with some way to automate
   them *)
 text \<open> Klenke remark 6.5 \<close>
-lemma (in sigma_finite_measure) LIMSEQ_measure_unique_AE:
+context sigma_finite_measure
+begin
+
+lemma LIMSEQ_measure_unique_AE:
   fixes f :: "nat \<Rightarrow> 'a \<Rightarrow> 'b :: {second_countable_topology,metric_space}"
   assumes [measurable]: "\<And>n. f n \<in> borel_measurable M" "l \<in> borel_measurable M" "l' \<in> borel_measurable M"
     and "LIMSEQ_measure M f l" "LIMSEQ_measure M f l'"
@@ -298,7 +321,7 @@ proof -
     then have "emeasure M ({x \<in> space M. dist (l x) (l' x) > \<epsilon>} \<inter> A m) \<le>
      emeasure M ({x \<in> space M. dist (l x) (f n x) > \<epsilon>/2} \<inter> A m \<union> {x \<in> space M. dist (f n x) (l' x) > \<epsilon>/2} \<inter> A m)"
       apply (rule emeasure_mono)
-       using A pred_def sorry
+      using A by measurable
     also have "... \<le> emeasure M ({x \<in> space M. dist (l x) (f n x) > \<epsilon>/2} \<inter> A m) +
      emeasure M ({x \<in> space M. dist (f n x) (l' x) > \<epsilon>/2} \<inter> A m)"
       apply (rule emeasure_subadditive)
@@ -384,7 +407,7 @@ proof -
     by (auto simp add: AE_iff_null)
 qed
 
-corollary (in sigma_finite_measure) LIMSEQ_ae_unique_AE:
+corollary LIMSEQ_ae_unique_AE:
   fixes f :: "nat \<Rightarrow> 'a \<Rightarrow> 'b :: {second_countable_topology,metric_space}"
   assumes "\<And>n. f n \<in> borel_measurable M" "l \<in> borel_measurable M" "l' \<in> borel_measurable M"
     and "tendsto_AE M f l sequentially" "tendsto_AE M f l' sequentially"
@@ -396,4 +419,34 @@ proof -
     using assms(1-3) LIMSEQ_measure_unique_AE by blast
 qed
 
+lemma tendsto_measure_at_within_eq_AE:
+  fixes f :: "'b :: first_countable_topology \<Rightarrow> 'a \<Rightarrow> 'c :: {second_countable_topology,metric_space}"
+  assumes f_measurable: "\<And>x. x \<in> S \<Longrightarrow> f x \<in> borel_measurable M"
+      and l_measurable: "l \<in> borel_measurable M" "l' \<in> borel_measurable M"
+      and tendsto: "tendsto_measure M f l (at t within S)" "tendsto_measure M f l' (at t within S)"
+      and not_bot: "(at t within S) \<noteq> \<bottom>"
+    shows "AE x in M. l x = l' x"
+proof -
+  from not_bot have "t islimpt S"
+    using trivial_limit_within by blast
+  then obtain s :: "nat \<Rightarrow> 'b" where s: "\<And>i. s i \<in> S - {t}" "s \<longlonglongrightarrow> t"
+    using islimpt_sequential by meson
+  then have fs_measurable: "\<And>n. f (s n) \<in> borel_measurable M"
+    using f_measurable by blast
+  have *: "LIMSEQ_measure M (\<lambda>n. f (s n)) l"
+      if "l \<in> borel_measurable M" "tendsto_measure M f l (at t within S)" for l
+  proof (intro LIMSEQ_measureI[OF fs_measurable that(1)], goal_cases)
+    case (1 \<epsilon> A)
+    then have "((\<lambda>n. measure M ({\<omega> \<in> space M. \<epsilon> < dist (f n \<omega>) (l \<omega>)} \<inter> A)) \<longlongrightarrow> 0)(at t within S)"
+      using that(2) 1 tendsto_measure_def by blast
+    then show ?case
+      apply (rule filterlim_compose[where f=s])
+      by (smt (verit, del_insts) DiffD1 DiffD2 eventuallyI filterlim_at insertI1 s)
+  qed
+  show ?thesis
+    apply (rule LIMSEQ_measure_unique_AE[OF fs_measurable l_measurable])
+    using * tendsto l_measurable by simp_all
+qed
+
+end
 end
