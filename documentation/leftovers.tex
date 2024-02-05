@@ -1,0 +1,17 @@
+% Often we want to prove that a property holds for all sets in a sigma algebra. It is possible to do this by induction, showing that the property holds on some generator and then inductively on countable unions and complement. However, if our generator is \(\cap\)-stable then we are allowed to assume that the sets are disjoint in the countable union case, which simplifies the proofs.
+
+% DYADIC RATIONALS
+For this use the dyadic rationals: numbers of the form \(\frac{k}{2^n}\) where \(k, n\in\mathbb{N}\). We present a novel definition for the sets of dyadic rationals with denominator \(2^n\) covering intervals of reals \([0,T]\) as follows:
+ \[D_n(T) = \left\{\frac{k}{2^n} \mid k \in 0 \ldots\left\lfloor 2^nT \right\rfloor\right\}\]
+ Moreover, we define the dyadic rationals \(D(T)= \bigcup_n D_n(T)\)
+
+We show that \(\frac{\left\lfloor 2^nx \right\rfloor}{2^n} \in  D_n(T)\) if \(0 \le n \le T\). In addition to this, we show the following:
+ \begin{lemma}
+ \[\lim_{n\to\infty}\frac{\left\lfloor 2^nx \right\rfloor}{2^n} = x\]
+ \end{lemma}
+
+Together, these two facts show that every \(x \in [0,T]\) is a limit point of \(D(T)\). Hence, \(D(T)\) is dense in the reals. It is also countable, as it is a countable union of finite sets. Finally, \(D_n(T)\) is monotonically increasing. The constructive definition makes the dyadics easier to work with than regular rationals, making them a more convenient choice in proofs that require a countable dense subset.
+
+\subsection{Dyadic expansion}
+Let x be a dyadic rational in \([0,T]\) with resolution n. Let k be an integer and b a list of length n containing only 0s and 1s. Then (k, b) is the dyadic expansion of x if \(x = k + \sum_1^n \frac{b ! (m-1)}{2 ^ m}\), where \(b!m\) is the nth-entry of 0-indexed list b. We show that there always exists a unique binary expansion for any dyadic rational with finite resolution.
+

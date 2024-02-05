@@ -1,0 +1,1075 @@
+@InProceedings{post20,
+  author    = {Post, Mark A. and Bianco, Alessandro and Yan, Xiu T.},
+  booktitle = {Informatics in Control, Automation and Robotics},
+  title     = {Autonomous Navigation with Open Software Platform for Field Robots},
+  year      = {2020},
+  address   = {Cham},
+  editor    = {Gusikhin, Oleg and Madani, Kurosh},
+  pages     = {425--450},
+  publisher = {Springer International Publishing},
+  abstract  = {In this chapter, we present an autonomous monitoring robot platform for agricultural farms and fields that is built using low-cost off-the-shelf hardware and open source software so as to be affordable for farmers. We provide a review of the current state of the art in autonomous agricultural robots and summarize the challenges that they must overcome. Our work comprises two main components: (1) the system architecture and hardware selected for a fully autonomous agricultural robot platform for automated monitoring and intervention tasks, and (2) the sensor fusion, local planning, and navigation software based on the Robot Operating System (ROS) framework with inclusion of design details and testing results. The challenges faced, solutions tested, and successes achieved with respect to the hardware and software architectures for this robot are presented in the interest of guiding future solutions for autonomous agricultural navigation and planning. We evaluate our approaches in outdoor farm field environments as well as indoor environments serving as an analogue for greenhouse navigation, and show how the properties of the environment affect the accuracy of the mapping and localisation tasks.},
+  groups    = {Robotics, PhD literature},
+  isbn      = {978-3-030-11292-9},
+}
+
+@InProceedings{rouimeliotis00,
+  author    = {Roumeliotis, S.I. and Bekey, G.A.},
+  booktitle = {Proceedings 2000 ICRA. Millennium Conference. IEEE International Conference on Robotics and Automation. Symposia Proceedings (Cat. No.00CH37065)},
+  title     = {Bayesian estimation and Kalman filtering: a unified framework for mobile robot localization},
+  doi       = {10.1109/ROBOT.2000.846481},
+  pages     = {2985-2992 vol.3},
+  volume    = {3},
+  file      = {:literature/Bayesian_estimation_and_Kalman_filtering_a_unified_framework_for_mobile_robot_localization.pdf:PDF},
+  groups    = {Robotics, PhD literature},
+  year      = {2000},
+}
+
+@Article{arasaratnam2009,
+  author  = {Arasaratnam, Ienkaran and Haykin, Simon},
+  title   = {Cubature Kalman Filters},
+  doi     = {10.1109/TAC.2009.2019800},
+  number  = {6},
+  pages   = {1254-1269},
+  volume  = {54},
+  groups  = {Robotics, PhD literature},
+  journal = {IEEE Transactions on Automatic Control},
+  year    = {2009},
+}
+
+@InProceedings{orderud05,
+  author = {Fredrik Orderud and Sem S{\ae}lands},
+  title  = {Comparison of Kalman Filter Estimation Approaches for State Space Models with Nonlinear Measurements},
+  year   = {2005},
+  groups = {Robotics, PhD literature},
+}
+
+@Article{urrea21,
+  author     = {Claudio Urrea and Rayko Agramonte},
+  journal    = {Journal of Sensors},
+  title      = {Kalman Filter: Historical Overview and Review of Its Use in Robotics 60 Years after Its Creation},
+  year       = {2021},
+  groups     = {Robotics, PhD literature},
+  readstatus = {read},
+}
+
+@InProceedings{post15,
+  author    = {M. A Post},
+  title     = {An Embedded Implementation of Bayesian Network Robot Programming Methods},
+  doi       = {10.19124/ima.2015.001.06},
+  publisher = {Institute of Mathematics and its Applications},
+  file      = {:literature/Post-An-Embedded-Implementation-of-Bayesian-Network-Robot-Programming-Methods.pdf:PDF},
+  groups    = {Robotics, PhD literature},
+  year      = {2015},
+}
+
+@Article{post16,
+  author     = {Mark A. Post and Junquan Li and Brendan M. Quine},
+  title      = {Planetary micro-rover operations on Mars using a Bayesian framework for inference and control},
+  doi        = {https://doi.org/10.1016/j.actaastro.2015.12.019},
+  issn       = {0094-5765},
+  pages      = {295-314},
+  url        = {https://www.sciencedirect.com/science/article/pii/S0094576515004646},
+  volume     = {120},
+  abstract   = {With the recent progress toward the application of commercially-available hardware to small-scale space missions, it is now becoming feasible for groups of small, efficient robots based on low-power embedded hardware to perform simple tasks on other planets in the place of large-scale, heavy and expensive robots. In this paper, we describe design and programming of the Beaver micro-rover developed for Northern Light, a Canadian initiative to send a small lander and rover to Mars to study the Martian surface and subsurface. For a small, hardware-limited rover to handle an uncertain and mostly unknown environment without constant management by human operators, we use a Bayesian network of discrete random variables as an abstraction of expert knowledge about the rover and its environment, and inference operations for control. A framework for efficient construction and inference into a Bayesian network using only the C language and fixed-point mathematics on embedded hardware has been developed for the Beaver to make intelligent decisions with minimal sensor data. We study the performance of the Beaver as it probabilistically maps a simple outdoor environment with sensor models that include uncertainty. Results indicate that the Beaver and other small and simple robotic platforms can make use of a Bayesian network to make intelligent decisions in uncertain planetary environments.},
+  file       = {Rover:literature/rover.pdf:PDF},
+  groups     = {Robotics, PhD literature},
+  journal    = {Acta Astronautica},
+  keywords   = {Rover, Decision-making, Probabilistic, Bayesian, Inference, Mars},
+  readstatus = {skimmed},
+  year       = {2016},
+}
+
+@Book{koller09,
+  author    = {Koller, Daphne},
+  publisher = {The MIT Press},
+  title     = {Probabilistic graphical models : principles and techniques},
+  year      = {2009},
+  address   = {Cambridge, Massachusetts},
+  isbn      = {9780262013192},
+  groups    = {Robotics, PhD literature},
+}
+
+% Probabilistic robotics
+
+@Book{thrun06,
+  author    = {Thrun, Sebastian and Burgard, Wolfram and Fox, Dieter},
+  publisher = {MIT Press},
+  title     = {Probalistic robotics},
+  year      = {2006},
+  groups    = {PhD literature, Robotics},
+}
+
+@Article{itrees,
+  author        = {Simon Foster and Chung-Kil Hur and Jim Woodcock},
+  title         = {Formally Verified Simulations of State-Rich Processes using Interaction Trees in Isabelle/HOL},
+  year          = {2021},
+  month         = may,
+  abstract      = {Simulation and formal verification are important complementary techniques necessary in high assurance model-based systems development. In order to support coherent results, it is necessary to provide unifying semantics and automation for both activities. In this paper we apply Interaction Trees in Isabelle/HOL to produce a verification and simulation framework for state-rich process languages. We develop the core theory and verification techniques for Interaction Trees, use them to give a semantics to the CSP and Circus languages, and formally link our new semantics with the failures-divergences semantic model. We also show how the Isabelle code generator can be used to generate verified executable simulations for reactive and concurrent programs.},
+  archiveprefix = {arXiv},
+  eprint        = {2105.05133},
+  file          = {:http\://arxiv.org/pdf/2105.05133v1:PDF},
+  groups        = {UTP},
+  keywords      = {cs.LO},
+  primaryclass  = {cs.LO},
+  readstatus    = {read},
+}
+
+@Book{hoare98,
+  author     = {Charles Anthony Richard Hoare and He Jifeng},
+  title      = {Unifying theories of programming},
+  publisher  = {Prentice Hall Englewood Cliffs},
+  file       = {Unifying Theories of Programming:/home/christianpardillolaursen/PhD/literature/utp.pdf:PDF},
+  groups     = {UTP},
+  readstatus = {skimmed},
+  year       = {1998},
+}
+
+@Article{foster21,
+  author        = {Simon Foster and Jonathan Julián Huerta y Munive and Mario Gleirscher and Georg Struth},
+  journaltitle  = {FM2021},
+  title         = {Hybrid Systems Verification with Isabelle/HOL: Simpler Syntax, Better Models, Faster Proofs},
+  eprint        = {2106.05987},
+  abstract      = {We extend a semantic verification framework for hybrid systems with the Isabelle/HOL proof assistant by an algebraic model for hybrid program stores, a shallow expression model for hybrid programs and their correctness specifications, and domain-specific deductive and calculational support. The new store model yields clean separations and dynamic local views of variables, e.g. discrete/continuous, mutable/immutable, program/logical, and enhanced ways of manipulating them using combinators, projections and framing. This leads to more local inference rules, procedures and tactics for reasoning with invariant sets, certifying solutions of hybrid specifications or calculating derivatives with increased proof automation and scalability. The new expression model provides more user-friendly syntax, better control of name spaces and interfaces connecting the framework with real-world modelling languages.},
+  archiveprefix = {arXiv},
+  file          = {:http\://arxiv.org/pdf/2106.05987v1:PDF},
+  groups        = {UTP, Hybrid Systems, Robotics Verification},
+  keywords      = {cs.LO},
+  month         = jun,
+  primaryclass  = {cs.LO},
+  readstatus    = {skimmed},
+  year          = {2021},
+}
+
+@Article{foster20,
+  author     = {Simon Foster and James Baxter and Ana Cavalcanti and Jim Woodcock and Frank Zeyda},
+  title      = {Unifying semantic foundations for automated verification tools in Isabelle/UTP},
+  doi        = {https://doi.org/10.1016/j.scico.2020.102510},
+  issn       = {0167-6423},
+  pages      = {102510},
+  url        = {https://www.sciencedirect.com/science/article/pii/S0167642320301192},
+  volume     = {197},
+  abstract   = {The growing complexity and diversity of models used for engineering dependable systems implies that a variety of formal methods, across differing abstractions, paradigms, and presentations, must be integrated. Such an integration requires unified semantic foundations for the various notations, and co-ordination of a variety of automated verification tools. The contribution of this paper is Isabelle/UTP, an implementation of Hoare and He's Unifying Theories of Programming, a framework for unification of formal semantics. Isabelle/UTP permits the mechanisation of computational theories for diverse paradigms, and their use in constructing formalised semantics. These can be further applied in the development of verification tools, harnessing Isabelle's proof automation facilities. Several layers of mathematical foundations are developed, including lenses to model variables and state spaces as algebraic objects, alphabetised predicates and relations to model programs, algebraic and axiomatic semantics, proof tools for Hoare logic and refinement calculus, and UTP theories to encode computational paradigms.},
+  file       = {Unifying semantic foundations for automated verification tools in Isabelle/UTP:/home/christianpardillolaursen/PhD/literature/isabelleutp.pdf:PDF},
+  groups     = {UTP},
+  journal    = {Science of Computer Programming},
+  keywords   = {Theorem proving, Lenses, Unifying theories of programming, Hoare logic, Isabelle/HOL},
+  readstatus = {read},
+  year       = {2020},
+}
+
+% Robotic verification
+
+@Article{luckcuck19,
+  author     = {Luckcuck, Matt and Farrell, Marie and Dennis, Louise A. and Dixon, Clare and Fisher, Michael},
+  title      = {Formal Specification and Verification of Autonomous Robotic Systems: A Survey},
+  doi        = {10.1145/3342355},
+  number     = {5},
+  url        = {https://doi.org/10.1145/3342355},
+  volume     = {52},
+  address    = {New York, NY, USA},
+  articleno  = {100},
+  file       = {Formal Specification and Verification of Autonomous Robotic Systems\: A Survey:literature/luckcuck_robot_verification.pdf:PDF},
+  groups     = {PhD literature, Robotics, Robotics Verification},
+  issue_date = {October 2019},
+  journal    = {ACM Comput. Surv.},
+  month      = sep,
+  numpages   = {41},
+  publisher  = {Association for Computing Machinery},
+  readstatus = {skimmed},
+  year       = {2019},
+}
+
+@InProceedings{platzer11,
+  author        = {Andr{\'e} Platzer},
+  booktitle     = {CADE},
+  title         = {Stochastic Differential Dynamic Logic for Stochastic Hybrid Programs},
+  doi           = {10.1007/978-3-642-22438-6_34},
+  editor        = {Nikolaj Bj{\o}rner and Viorica Sofronie-Stokkermans},
+  pages         = {446-460},
+  publisher     = {Springer},
+  series        = {LNCS},
+  volume        = {6803},
+  abstract      = {Logic is a powerful tool for analyzing and verifying
+    systems, including programs, discrete systems,
+    real-time systems, hybrid systems, and distributed
+    systems. Some applications also have a stochastic
+    behavior, however, either because of fundamental
+    properties of nature, uncertain environments, or
+    simplifications to overcome complexity. Discrete
+    probabilistic systems have been studied using logic.
+    But logic has been chronically underdeveloped in the
+    context of stochastic hybrid systems, i.e., systems
+    with interacting discrete, continuous, and stochastic
+    dynamics. We aim at overcoming this deficiency and
+    introduce a dynamic logic for stochastic hybrid
+    systems. Our results indicate that logic is a
+    promising tool for understanding stochastic hybrid
+    systems and can help taming some of their complexity.
+    We introduce a compositional model for stochastic
+    hybrid systems. We prove adaptivity, cadlag, and
+    Markov time properties, and prove that the semantics
+    of our logic is measurable. We present compositional
+    proof rules, including rules for stochastic
+    differential equations, and prove soundness.},
+  file          = {Stochastic Differential Dynamic Logic for Stochastic Hybrid Programs:literature/Platzer2011_Chapter_StochasticDifferentialDynamicL.pdf:PDF},
+  groups        = {Stochastic hybrid systems, Robotics Verification},
+  keywords      = {dynamic logic, proof calculus, stochastic differential equations, stochastic hybrid systems, stochastic processes},
+  longbooktitle = {International Conference on Automated Deduction, {CADE-23}, Wroc{\l}aw, Poland, Proceedings},
+  readstatus    = {skimmed},
+  year          = {2011},
+}
+
+@InProceedings{zuliani12,
+  author    = {Zuliani, Paolo and Baier, Christel and Clarke, Edmund M.},
+  booktitle = {Proceedings of the 15th ACM International Conference on Hybrid Systems: Computation and Control},
+  title     = {Rare-Event Verification for Stochastic Hybrid Systems},
+  doi       = {10.1145/2185632.2185665},
+  isbn      = {9781450312202},
+  location  = {Beijing, China},
+  pages     = {217–226},
+  publisher = {Association for Computing Machinery},
+  series    = {HSCC '12},
+  url       = {https://doi.org/10.1145/2185632.2185665},
+  abstract  = {In this paper we address the problem of verifying in stochastic hybrid systems temporal
+logic properties whose probability of being true is very small --- rare events. It
+is well known that sampling-based (Monte Carlo) techniques, such as statistical model
+checking, do not perform well for estimating rare-event probabilities. The problem
+is that the sample size required for good accuracy grows too large as the event probability
+tends to zero. However, several techniques have been developed to address this problem.
+We focus on importance sampling techniques, which bias the original system to compute
+highly accurate and efficient estimates. The main difficulty in importance sampling
+is to devise a good biasing density, that is, a density yielding a low-variance estimator.
+In this paper, we show how to use the cross-entropy method for generating approximately
+optimal biasing densities for statistical model checking. We apply the method with
+importance sampling and statistical model checking for estimating rare-event probabilities
+in stochastic hybrid systems coded as Stateflow/Simulink diagrams.},
+  address   = {New York, NY, USA},
+  file      = {zuliani12:literature/zuliani12.pdf:PDF},
+  groups    = {Stochastic hybrid systems, Robotics Verification},
+  keywords  = {statistical model checking, rare events, probabilistic model checking, hybrid systems, stochastic systems},
+  numpages  = {10},
+  year      = {2012},
+}
+
+@InProceedings{lee18,
+  author    = {Lee, Edward A. and Sirjani, Marjan},
+  booktitle = {Formal Aspects of Component Software},
+  title     = {What Good are Models?},
+  editor    = {Bae, Kyungmin and {\"O}lveczky, Peter Csaba},
+  isbn      = {978-3-030-02146-7},
+  pages     = {3--31},
+  publisher = {Springer International Publishing},
+  abstract  = {Models are central to engineering. They are used for analysis, synthesis, and communication between humans. A given artifact or process may have multiple models with different purposes, modeling different aspects, or modeling at varying levels of abstraction. In this paper, we give a general overview of how models are used, with the goal of making the concepts clearer for different communities. We focus on the domain of track-based flow management of automated systems, and identify two different modeling styles, Eulerian and Lagrangian. Eulerian models focus on regions of space, whereas Lagrangian models focus on entities moving through space. We discuss how the features of the system, like having centralized or decentralized control or the ability to install fixed infrastructure, influence the choice between these styles. Although the choice between modeling styles is rarely made consciously, it affects modeling efficiency, and one style may be far better suited for certain modeling problems than another. For problems with a more global nature concerning the physical space, an Eulerian model is likely to be a better match. For problems that concern the moving objects specifically, where the identity of the individual objects is important, a Lagrangian view is the one to choose. In many cases, combining the two styles is the most effective approach. We illustrate the two styles using an example of an automated quarry.},
+  address   = {Cham},
+  groups    = {Hybrid Systems, Robotics Verification},
+  year      = {2018},
+}
+
+@Article{platzer08,
+  author      = {Andr{\'e} Platzer},
+  title       = {Differential Dynamic Logic for Hybrid Systems.},
+  doi         = {10.1007/s10817-008-9103-8},
+  issn        = {0168-7433},
+  number      = {2},
+  pages       = {143-189},
+  volume      = {41},
+  abstract    = {Hybrid systems are models for complex physical systems
+    and are defined as dynamical systems with interacting
+    discrete transitions and continuous evolutions along
+    differential equations. With the goal of developing a
+    theoretical and practical foundation for deductive
+    verification of hybrid systems, we introduce a dynamic
+    logic for hybrid programs, which is a program notation
+    for hybrid systems. As a verification technique that is
+    suitable for automation, we introduce a free variable
+    proof calculus with a novel combination of real-valued
+    free variables and Skolemisation for lifting quantifier
+    elimination for real arithmetic to dynamic logic. The
+    calculus is compositional, i.e., it reduces properties
+    of hybrid programs to properties of their parts. Our
+    main result proves that this calculus axiomatises the
+    transition behaviour of hybrid systems completely
+    relative to differential equations. In a case study
+    with cooperating traffic agents of the European Train
+    Control System, we further show that our calculus is
+    well-suited for verifying realistic hybrid systems with
+    parametric system dynamics.},
+  file        = {paper:literature/Platzer2008_Article_DifferentialDynamicLogicForHyb.pdf:PDF},
+  groups      = {Keymaera X, Robotics Verification},
+  journal     = {J. Autom. Reas.},
+  keywords    = {dynamic logic, differential equations, sequent calculus, axiomatisation, automated theorem proving, verification of hybrid systems},
+  longjournal = {Journal of Automated Reasoning},
+  readstatus  = {skimmed},
+  year        = {2008},
+}
+
+@Article{wang17,
+  author     = {Wang, Shuling and Zhan, Naijun and Zhang, Lijun},
+  title      = {A Compositional Modelling and Verification Framework for Stochastic Hybrid Systems.},
+  number     = {4},
+  pages      = {751--775},
+  volume     = {29},
+  comment    = {SHCSP},
+  file       = {:literature/s00165-017-0421-7.pdf:PDF},
+  groups     = {Stochastic hybrid systems, Robotics Verification},
+  journal    = {Formal Aspects Comput.},
+  readstatus = {skimmed},
+  year       = {2017},
+}
+
+@InBook{henzinger00,
+  author    = {Henzinger, Thomas A.},
+  booktitle = {Verification of Digital and Hybrid Systems},
+  title     = {The Theory of Hybrid Automata},
+  doi       = {10.1007/978-3-642-59615-5_13},
+  editor    = {Inan, M. Kemal and Kurshan, Robert P.},
+  isbn      = {978-3-642-59615-5},
+  pages     = {265--292},
+  publisher = {Springer Berlin Heidelberg},
+  url       = {https://doi.org/10.1007/978-3-642-59615-5_13},
+  abstract  = {A hybrid automaton is a formal model for a mixed discrete-continuous System. W e classify hybrid automata acoording to what questions about their behavior can be answered algorithmically. The Classification reveals structure on mixed discrete-continuous State Spaces that was previously studied on purely discrete state Spaces only. In particular, various classes of hybrid automata induce finitary trace equivalence (or similarity, or bisimilarity) relations on an uncountable State space, thus permitting the application of various model-checking techniques that were originally developed for finitestate Systems.},
+  address   = {Berlin, Heidelberg},
+  file      = {The Theory of Hybrid Automata:literature/The_theory_of_hybrid_automata.pdf:PDF},
+  groups    = {Hybrid Systems, Robotics Verification},
+  year      = {2000},
+}
+
+@InProceedings{chaochen95,
+  author       = {Chaochen, Zhou and Ji, Wang and Ravn, Anders P},
+  booktitle    = {International Hybrid Systems Workshop},
+  title        = {A formal description of hybrid systems},
+  organization = {Springer},
+  pages        = {511--530},
+  groups       = {Hybrid Systems, Robotics Verification},
+  readstatus   = {skimmed},
+  year         = {1995},
+}
+
+@Article{hahn12,
+  author    = {Ernst Moritz Hahn and Arnd Hartmanns and Holger Hermanns and Joost-Pieter Katoen},
+  title     = {A compositional modelling and analysis framework for stochastic hybrid systems},
+  doi       = {10.1007/s10703-012-0167-z},
+  number    = {2},
+  pages     = {191--232},
+  volume    = {43},
+  comment   = {HModest paper},
+  file      = {HModest:/home/christianpardillolaursen/PhD/literature/Hahn2013_Article_ACompositionalModellingAndAnal.pdf:PDF},
+  groups    = {Stochastic hybrid systems, Robotics Verification},
+  journal   = {Formal Methods in System Design},
+  month     = {aug},
+  publisher = {Springer Science and Business Media {LLC}},
+  year      = {2012},
+}
+
+@Article{lanotte21,
+  author   = {Ruggero Lanotte and Massimo Merro and Simone Tini},
+  title    = {A probabilistic calculus of cyber-physical systems},
+  doi      = {https://doi.org/10.1016/j.ic.2020.104618},
+  issn     = {0890-5401},
+  note     = {Selected Papers of the 11th International Conference on Language and Automata Theory and Applications, LATA 2017},
+  number   = {104618},
+  url      = {https://www.sciencedirect.com/science/article/pii/S0890540120301061},
+  volume   = {279},
+  abstract = {Cyber-Physical Systems (CPSs) are integrations of networking and distributed computing systems with physical processes, where feedback loops allow physical processes to affect computations and vice versa. Although CPSs can be found in several real-world domains, their verification often relies on simulation test systems rather than formal methodologies. We propose a hybrid probabilistic process calculus for modelling and reasoning on CPSs. The dynamics of the calculus is expressed in terms of a probabilistic labelled transition system in the SOS style of Plotkin. This is used to define a bisimulation-based probabilistic behavioural semantics which supports compositional reasonings. For a more careful comparison between CPSs, we provide two compositional probabilistic metrics to formalise the notion of behavioural distance between systems, also in the case of bounded computations. Finally, we provide a non-trivial case study, taken from an engineering application, and use it to illustrate our definitions and our compositional behavioural theory for CPSs.},
+  file     = {A probabilistic calculus of cyber-physical systems:/home/christianpardillolaursen/PhD/literature/lanotte.pdf:PDF},
+  groups   = {Stochastic hybrid systems, Robotics Verification},
+  journal  = {Information and Computation},
+  keywords = {Cyber-physical system, Hybrid probabilistic process calculus, Probabilistic metric semantics},
+  year     = {2021},
+}
+
+@Article{abate10,
+  author    = {Abate, Alessandro and Katoen, Joost-Pieter and Lygeros, John and Prandini, Maria},
+  title     = {Approximate model checking of stochastic hybrid systems},
+  number    = {6},
+  pages     = {624--641},
+  volume    = {16},
+  file      = {Approximate model checking of stochastic hybrid systems:literature/AKLP10.pdf:PDF},
+  groups    = {Robotics Verification},
+  journal   = {European Journal of Control},
+  publisher = {Elsevier},
+  year      = {2010},
+}
+
+@Article{david12,
+  author   = {David, Alexandre and Du, Dehui and Larsen, Kim G and Legay, Axel and Miku{\v{c}}ionis, Marius and Poulsen, Danny B{\o}gsted and Sedwards, Sean},
+  title    = {Statistical model checking for stochastic hybrid systems},
+  abstract = {This paper presents novel extensions and applications of the UPPAAL-SMC model checker. The extensions allow for statistical model checking of stochastic hybrid systems. We show how our race-based stochastic semantics extends to networks of hybrid systems, and indicate the integration technique applied for implementing this semantics in the UPPAAL-SMC simulation engine. We report on two applications of the resulting tool-set coming from systems biology and energy aware buildings.},
+  groups   = {Stochastic hybrid systems, Robotics Verification},
+  journal  = {arXiv preprint arXiv:1208.3856},
+  year     = {2012},
+}
+
+@InProceedings{keymaerax,
+  author        = {Nathan Fulton and Stefan Mitsch and Jan-David Quesel and Marcus V{\"o}lp and Andr{\'e} Platzer},
+  booktitle     = {CADE},
+  title         = {{KeYmaera X}: An Axiomatic Tactical Theorem Prover for Hybrid Systems},
+  doi           = {10.1007/978-3-319-21401-6_36},
+  editor        = {Amy P. Felty and Aart Middeldorp},
+  pages         = {527--538},
+  publisher     = {Springer},
+  series        = {LNCS},
+  volume        = {9195},
+  groups        = {Keymaera X, Robotics Verification},
+  longbooktitle = {International Conference on Automated Deduction, {CADE-25}, Berlin, Germany, Proceedings},
+  readstatus    = {skimmed},
+  year          = {2015},
+}
+
+@Article{mitsch17,
+  author     = {Stefan Mitsch and Khalil Ghorbal and David Vogelbacher and Andr{\'{e}} Platzer},
+  title      = {Formal verification of obstacle avoidance and navigation of ground robots},
+  doi        = {10.1177/0278364917733549},
+  number     = {12},
+  pages      = {1312--1340},
+  url        = {https://doi.org/10.1177/0278364917733549},
+  volume     = {36},
+  bibsource  = {dblp computer science bibliography, https://dblp.org},
+  biburl     = {https://dblp.org/rec/journals/ijrr/MitschGVP17.bib},
+  groups     = {Keymaera X, Robotics Verification},
+  journal    = {Int. J. Robotics Res.},
+  readstatus = {read},
+  timestamp  = {Thu, 17 Sep 2020 12:03:04 +0200},
+  year       = {2017},
+}
+
+@Online{isabelle,
+  author = {{Isabelle Development Team}},
+  date   = {2023},
+  title  = {Isabelle},
+  url    = {https://isabelle.in.tum.de/index.html},
+  groups = {Isabelle/HOL},
+}
+
+@InProceedings{knp11,
+  author     = {Marta Kwiatkowska and Gethin Norman and David Parker},
+  booktitle  = {Proc. 23rd International Conference on Computer Aided Verification (CAV'11)},
+  date       = {2011},
+  title      = {{PRISM} 4.0: Verification of Probabilistic Real-time Systems},
+  editor     = {G. Gopalakrishnan and S. Qadeer},
+  pages      = {585--591},
+  publisher  = {Springer},
+  series     = {LNCS},
+  volume     = {6806},
+  file       = {PRISM 4.0\: Verification of Probabilistic Real-time Systems:/home/christianpardillolaursen/PhD/literature/cav11.pdf:PDF},
+  groups     = {Stochastic hybrid systems, Robotics Verification},
+  readstatus = {skimmed},
+}
+
+@Article{knp22,
+  author       = {Marta Kwiatkowska and Gethin Norman and David Parker},
+  date         = {2022},
+  journaltitle = {Annual Review of Control, Robotics, and Autonomous Systems},
+  title        = {Probabilistic Model Checking and Autonomy},
+  volume       = {5},
+  file         = {Probabilistic Model Checking and Autonomy:/home/christianpardillolaursen/PhD/literature/arcras-pmc.pdf:PDF},
+  groups       = {Stochastic hybrid systems, Robotics Verification},
+  publisher    = {Annual Reviews},
+}
+
+@InCollection{chen17,
+  author    = {Mingshuai Chen and Xiao Han and Tao Tang and Shuling Wang and Mengfei Yang and Naijun Zhan and Hengjun Zhao and Liang Zou},
+  booktitle = {{NASA} Monographs in Systems and Software Engineering},
+  date      = {2017},
+  title     = {{MARS}: A Toolchain for Modelling, Analysis and Verification of Hybrid Systems},
+  doi       = {10.1007/978-3-319-48628-4_3},
+  pages     = {39--58},
+  publisher = {Springer International Publishing},
+  file      = {MARS:/home/christianpardillolaursen/PhD/literature/Chen2017_Chapter_MARSAToolchainForModellingAnal.pdf:PDF},
+  groups    = {Hybrid Systems, Robotics Verification},
+}
+
+@InProceedings{ye21,
+  author     = {Ye, Kangfeng and Foster, Simon and Woodcock, Jim},
+  booktitle  = {Relational and Algebraic Methods in Computer Science},
+  date       = {2021},
+  title      = {Automated Reasoning for Probabilistic Sequential Programs with Theorem Proving},
+  editor     = {Fahrenberg, Uli and Gehrke, Mai and Santocanale, Luigi and Winter, Michael},
+  isbn       = {978-3-030-88701-8},
+  location   = {Cham},
+  pages      = {465--482},
+  publisher  = {Springer International Publishing},
+  abstract   = {Semantics for nondeterministic probabilistic sequential programs has been well studied in the past decades. In a variety of semantic models, how nondeterministic choice interacts with probabilistic choice is the most significant difference. In He, Morgan, and McIver's relational model, probabilistic choice refines nondeterministic choice. This model is general because of its predicative-style semantics in Hoare and He's Unifying Theories of Programming, and suitable for automated reasoning because of its algebraic feature. Previously, we gave probabilistic semantics to the RoboChart notation based on this model, and also formalised the proof that the semantic embedding is a homomorphism, and revealed interesting details. In this paper, we present our mechanisation of the proof in Isabelle/UTP enabling automated reasoning for probabilistic sequential programs including a subset of the RoboChart language. With mechanisation, we even reveal more interesting questions, hidden in the original model. We demonstrate several examples, including an example to illustrate the interaction between nondeterministic choice and probabilistic choice, and a RoboChart model for randomisation based on binary probabilistic choice.},
+  file       = {Automated Reasoning for Probabilistic Sequential Programs with Theorem Proving:/home/christianpardillolaursen/PhD/literature/Ye2021_Chapter_AutomatedReasoningForProbabili.pdf:PDF},
+  groups     = {UTP},
+  readstatus = {skimmed},
+}
+
+@InCollection{Zhu2015,
+  author    = {Longfei Zhu and Qiwen Xu and Jifeng He and Huibiao Zhu},
+  booktitle = {Unifying Theories of Programming},
+  date      = {2015},
+  title     = {A Formal Model for a Hybrid Programming Language},
+  doi       = {10.1007/978-3-319-14806-9_7},
+  pages     = {125--142},
+  publisher = {Springer International Publishing},
+  file      = {A Formal Model for a Hybrid Programming Language:/home/christianpardillolaursen/PhD/literature/Zhu2015_Chapter_AFormalModelForAHybridProgramm.pdf:PDF},
+}
+
+@InBook{woodcock21,
+  author     = {Woodcock, Jim and Foster, Simon and Mota, Alexandre and Ye, Kangfeng},
+  booktitle  = {Software Engineering for Robotics},
+  date       = {2021},
+  title      = {RoboStar Technology: Modelling Uncertainty in RoboChart Using Probability},
+  doi        = {10.1007/978-3-030-66494-7_13},
+  editor     = {Cavalcanti, Ana and Dongol, Brijesh and Hierons, Rob and Timmis, Jon and Woodcock, Jim},
+  isbn       = {978-3-030-66494-7},
+  location   = {Cham},
+  pages      = {413--465},
+  publisher  = {Springer International Publishing},
+  url        = {https://doi.org/10.1007/978-3-030-66494-7_13},
+  abstract   = {RoboChart is a UML-like language designed for modelling autonomous and mobile robots. It includes timed and probabilistic primitives. In this chapter, we discuss first why we need probability by surveying how we use it in designing robots. To illustrate our approach, we focus on the verification of probabilistic robotic algorithms for pose estimation. We verify a model-fitting algorithm: random sample consensus (Ransac). This is a popular algorithm, representative of a class of particle-filter algorithms. We analyse the aspects of the algorithm and show how to model-check properties and how to get stronger guarantees using a program logic. Our contributions are a survey of probabilistic robotic applications and an approach to verifying probabilistic algorithms developed using RoboStar technology.},
+  file       = {RoboStar Technology\: Modelling Uncertainty in RoboChart Using Probability:/home/christianpardillolaursen/PhD/literature/Woodcock2021_Chapter_RoboStarTechnologyModellingUnc.pdf:PDF},
+  groups     = {Robotics Verification, UTP},
+  readstatus = {read},
+}
+
+@Article{miyazawa19,
+  author       = {A.~Miyazawa and P.~Ribeiro and L.~Wei and A.~L.~C.~Cavalcanti and J.~Timmis and J.~C.~P.~Woodcock},
+  date         = {2019-01-23},
+  journaltitle = {Software {\&} Systems Modeling},
+  title        = {RoboChart: modelling and verification of the functional behaviour of robotic applications},
+  doi          = {10.1007/s10270-018-00710-z},
+  issn         = {1619-1374},
+  pages        = {3097--3149},
+  url          = {https://doi.org/10.1007/s10270-018-00710-z},
+  volume       = {18},
+  day          = {23},
+  file         = {RoboChart:/home/christianpardillolaursen/PhD/literature/Miyazawa2019_Article_RoboChartModellingAndVerificat.pdf:PDF},
+  readstatus   = {skimmed},
+}
+
+@PhdThesis{bujorianu05,
+  author      = {Manuela-Luminita Bujorianu},
+  date        = {2005},
+  institution = {University of Stirling},
+  title       = {Stochastic Hybrid Systems: Modelling and Verification},
+  file        = {Stochastic Hybrid Systems Modelling and Verification:literature/Bujorianu (2005) - Stochastic hybrid systems - modelling and verification.pdf:PDF},
+  groups      = {Stochastic hybrid systems},
+}
+
+@Article{pola03,
+  author       = {G. Pola and M.L. Bujorianu and J. Lygeros and M.D. Di Benedetto},
+  date         = {2003-06},
+  journaltitle = {{IFAC} Proceedings Volumes},
+  title        = {Stochastic Hybrid Models: An Overview},
+  doi          = {10.1016/s1474-6670(17)36405-4},
+  number       = {6},
+  pages        = {45--50},
+  volume       = {36},
+  file         = {Stochastic Hybrid Models\: An Overview:literature/Pola_hybrid_models.pdf:PDF},
+  groups       = {Stochastic hybrid systems},
+  publisher    = {Elsevier {BV}},
+}
+
+@Article{franzle07,
+  author       = {Fr{\"a}nzle, Martin and Herde, Christian},
+  date         = {2007},
+  journaltitle = {Formal Methods in System Design},
+  title        = {HySAT: An efficient proof engine for bounded model checking of hybrid systems},
+  number       = {3},
+  pages        = {179--198},
+  volume       = {30},
+  file         = {HySAT\: An efficient proof engine for bounded modelchecking of hybrid systems:literature/Fränzle-Herde2007_Article_HySATAnEfficientProofEngineFor.pdf:PDF},
+  publisher    = {Springer},
+}
+
+@Article{henzinger97,
+  author       = {Henzinger, Thomas A and Ho, Pei-Hsin and Wong-Toi, Howard},
+  date         = {1997},
+  journaltitle = {International Journal on Software Tools for Technology Transfer},
+  title        = {HyTech: A model checker for hybrid systems},
+  number       = {1-2},
+  pages        = {110--122},
+  volume       = {1},
+  file         = {HyTech\: A model checker for hybrid systems:literature/Henzinger1997_Article_HYTECHAModelCheckerForHybridSy.pdf:PDF},
+  publisher    = {Springer},
+}
+
+@Article{davis84,
+  author       = {Davis, Mark HA},
+  date         = {1984},
+  journaltitle = {Journal of the Royal Statistical Society: Series B (Methodological)},
+  title        = {Piecewise-deterministic Markov processes: A general class of non-diffusion stochastic models},
+  number       = {3},
+  pages        = {353--376},
+  volume       = {46},
+  publisher    = {Wiley Online Library},
+}
+
+@InProceedings{bujorianu03,
+  author       = {Bujorianu, Manuela L and Lygeros, John},
+  booktitle    = {International Workshop on Hybrid Systems: Computation and Control},
+  date         = {2003},
+  title        = {Reachability questions in piecewise deterministic Markov processes},
+  organization = {Springer},
+  pages        = {126--140},
+  file         = {Reachability in PDMP:literature/Bujorianu-Lygeros2003_Chapter_ReachabilityQuestionsInPiecewi.pdf:PDF},
+}
+
+@InProceedings{legay10,
+  author       = {Legay, Axel and Delahaye, Beno{\^\i}t and Bensalem, Saddek},
+  booktitle    = {International conference on runtime verification},
+  date         = {2010},
+  title        = {Statistical model checking: An overview},
+  organization = {Springer},
+  pages        = {122--135},
+  file         = {Statistical Model Checking\: An overview:literature/Legay2010_Chapter_StatisticalModelCheckingAnOver.pdf:PDF},
+}
+
+@InProceedings{hu00,
+  author       = {Hu, Jianghai and Lygeros, John and Sastry, Shankar},
+  booktitle    = {International Workshop on Hybrid Systems: Computation and Control},
+  date         = {2000},
+  title        = {Towards a theory of stochastic hybrid systems},
+  organization = {Springer},
+  pages        = {160--173},
+  file         = {Towards a theory of stochastic hybrid systems:literature/Hu2000_Chapter_TowardsATheoryOfStochasticHybr.pdf:PDF},
+}
+
+@Article{ghosh97,
+  author       = {Ghosh, Mrinal K and Arapostathis, Aristotle and Marcus, Steven I},
+  date         = {1997},
+  journaltitle = {SIAM Journal on Control and Optimization},
+  title        = {Ergodic control of switching diffusions},
+  number       = {6},
+  pages        = {1952--1988},
+  volume       = {35},
+  file         = {Ergodic control of switching diffusions:literature/switching_diffusions.pdf:PDF},
+  publisher    = {SIAM},
+}
+
+@InProceedings{konur10,
+  author       = {Konur, Savas and Dixon, Clare and Fisher, Michael},
+  booktitle    = {International Conference on Swarm Intelligence},
+  date         = {2010},
+  title        = {Formal verification of probabilistic swarm behaviours},
+  organization = {Springer},
+  pages        = {440--447},
+  file         = {Formal verification of probabilistic swarm behaviours:literature/Konur2010_Chapter_FormalVerificationOfProbabilis.pdf:PDF},
+}
+
+@Article{jeannin17,
+  author       = {Jean{-}Baptiste Jeannin and Khalil Ghorbal and Yanni Kouskoulas and Aurora Schmidt and Ryan Gardner and Stefan Mitsch and Andr{\'e} Platzer},
+  date         = {2017},
+  journaltitle = {STTT},
+  title        = {A Formally Verified Hybrid System for Safe Advisories in the Next-generation Airborne Collision Avoidance System},
+  doi          = {10.1007/s10009-016-0434-1},
+  number       = {6},
+  pages        = {717-741},
+  volume       = {19},
+  longjournal  = {International Journal on Software Tools for Technology Transfer},
+}
+
+@InProceedings{mitsch17-2,
+  author        = {Stefan Mitsch and Marco Gario and Christof J. Budnik and Michael Golm and Andr{\'e} Platzer},
+  booktitle     = {RSSRail},
+  date          = {2017},
+  title         = {Formal Verification of Train Control with Air Pressure Brakes},
+  doi           = {10.1007/978-3-319-68499-4_12},
+  editor        = {Alessandro Fantechi and Thierry Lecomte and Alexander Romanovsky},
+  pages         = {173-191},
+  publisher     = {Springer},
+  series        = {LNCS},
+  volume        = {10598},
+  longbooktitle = {RSSRail 2017: Reliability, Safety, and Security of Railway Systems},
+}
+
+@InProceedings{bohrer18,
+  author    = {Brandon Bohrer and Adriel Luo and Xue An Chuang and Andr{\'{e}} Platzer},
+  booktitle = {6th {IFAC} Conference on Analysis and Design of Hybrid Systems, {ADHS} 2018, Oxford, UK, July 11-13, 2018},
+  date      = {2018},
+  title     = {{CoasterX}: {A} Case Study in Component-Driven Hybrid Systems Proof Automation},
+  doi       = {10.1016/j.ifacol.2018.08.010},
+  editor    = {Alessandro Abate and Antoine Girard and Maurice Heemels},
+  number    = {16},
+  pages     = {55--60},
+  publisher = {Elsevier},
+  series    = {IFAC-PapersOnLine},
+  volume    = {51},
+}
+
+@InProceedings{woodcock19,
+  author       = {Woodcock, Jim and Cavalcanti, Ana and Foster, Simon and Mota, Alexandre and Ye, Kangfeng},
+  booktitle    = {International Symposium on Unifying Theories of Programming},
+  date         = {2019},
+  title        = {Probabilistic semantics for RoboChart},
+  organization = {Springer},
+  pages        = {80--105},
+  file         = {Probabilistic Semantics for RoboChart:literature/Woodcock2019_Chapter_ProbabilisticSemanticsForRoboC.pdf:PDF},
+}
+
+@InProceedings{clarke14,
+  author       = {Clarke, Edmund M and Gao, Sicun},
+  booktitle    = {International Symposium On Leveraging Applications of Formal Methods, Verification and Validation},
+  date         = {2014},
+  title        = {Model checking hybrid systems},
+  organization = {Springer},
+  pages        = {385--386},
+}
+
+@InProceedings{frehse11,
+  author       = {Frehse, Goran and Le Guernic, Colas and Donz{\'e}, Alexandre and Cotton, Scott and Ray, Rajarshi and Lebeltel, Olivier and Ripado, Rodolfo and Girard, Antoine and Dang, Thao and Maler, Oded},
+  booktitle    = {International Conference on Computer Aided Verification},
+  date         = {2011},
+  title        = {SpaceEx: Scalable verification of hybrid systems},
+  organization = {Springer},
+  pages        = {379--395},
+}
+
+@InProceedings{woodcock04,
+  author       = {Woodcock, Jim and Cavalcanti, Ana},
+  booktitle    = {International Conference on Integrated Formal Methods},
+  date         = {2004},
+  title        = {A tutorial introduction to designs in unifying theories of programming},
+  organization = {Springer},
+  pages        = {40--66},
+  file         = {UTP Designs:literature/04-wc.pdf:PDF},
+}
+
+@Article{cavalcanti04,
+  author       = {Cavalcanti, Ana and Woodcock, Jim},
+  date         = {2004},
+  journaltitle = {Pernambuco Summer School on Software Engineering},
+  title        = {A tutorial introduction to CSP in Unifying Theories of Programming},
+  pages        = {220--268},
+  file         = {UTP CSP:literature/CW06.pdf:PDF},
+  publisher    = {Springer},
+}
+
+@InProceedings{holzl11,
+  author       = {H{\"o}lzl, Johannes and Heller, Armin},
+  booktitle    = {International Conference on Interactive Theorem Proving},
+  date         = {2011},
+  title        = {Three chapters of measure theory in Isabelle/HOL},
+  organization = {Springer},
+  pages        = {135--151},
+  file         = {Three chapters of measure theory in Isabelle/HOL:literature/hoelzl2011measuretheory.pdf:PDF},
+  groups       = {Isabelle/HOL},
+}
+
+@InProceedings{holzl17,
+  author    = {H{\"o}lzl, Johannes},
+  booktitle = {Proceedings of the 6th ACM SIGPLAN Conference on Certified Programs and Proofs},
+  date      = {2017},
+  title     = {Markov processes in Isabelle/HOL},
+  pages     = {100--111},
+  file      = {MarkovProcessesInIsabelleHOL:literature/MarkovProcessesInIsabelleHOL.pdf:PDF},
+  groups    = {Isabelle/HOL},
+}
+
+@InProceedings{bujorianu05-2,
+  author       = {Bujorianu, Manuela L and Lygeros, John and Bujorianu, Marius C},
+  booktitle    = {International Workshop on Hybrid Systems: Computation and Control},
+  date         = {2005},
+  title        = {Bisimulation for general stochastic hybrid systems},
+  organization = {Springer},
+  pages        = {198--214},
+  file         = {Bisimulation for GSHS:literature/Bujorianu2005_Chapter_BisimulationForGeneralStochast.pdf:PDF},
+}
+
+@InProceedings{shmarov15,
+  author    = {Shmarov, Fedor and Zuliani, Paolo},
+  booktitle = {Proceedings of the 18th International Conference on Hybrid Systems: Computation and Control},
+  date      = {2015},
+  title     = {Probreach: verified probabilistic delta-reachability for stochastic hybrid systems},
+  pages     = {134--139},
+  comment   = {Model checking for hybrid systems with random initial conditions},
+  file      = {ProbReach:literature/probreach.pdf:PDF},
+}
+
+@Article{shmarov14,
+  author       = {Shmarov, Fedor and Zuliani, Paolo},
+  date         = {2014},
+  journaltitle = {arXiv preprint arXiv:1406.1920},
+  title        = {Probabilistic bounded reachability for hybrid systems with continuous nondeterministic and probabilistic parameters},
+  file         = {Probabilistic bounded reachability for hybrid systems with continuous nondeterministic and probabilistic parameters:literature/shmarov14.pdf:PDF},
+}
+
+@Article{yuan04,
+  author       = {Yuan, Chenggui and Mao, Xuerong},
+  date         = {2004},
+  journaltitle = {Mathematics and Computers in Simulation},
+  title        = {Convergence of the Euler--Maruyama method for stochastic differential equations with Markovian switching},
+  number       = {2},
+  pages        = {223--235},
+  volume       = {64},
+  file         = {Euler--Maruyama convergence for SDEs with Markovian switching:literature/euler-maruyama-SHS.pdf:PDF},
+  publisher    = {Elsevier},
+}
+
+@InProceedings{bouissou14,
+  author    = {Bouissou, Marc and Elmqvist, Hilding and Otter, Martin and Benveniste, Albert},
+  booktitle = {The 10th International Modelica Conference 2014},
+  date      = {2014},
+  title     = {Efficient Monte Carlo simulation of stochastic hybrid systems},
+  comment   = {Models SHS as PDMP},
+  file      = {bouissou14:literature/bouissou14.pdf:PDF},
+}
+
+@Book{yin09,
+  author    = {Yin, G George and Zhu, Chao},
+  date      = {2009},
+  title     = {Hybrid switching diffusions: properties and applications},
+  publisher = {Springer Science \& Business Media},
+  volume    = {63},
+  file      = {Switching diffusions:literature/Yin-Zhu2010_Chapter_SwitchingDiffusion.pdf:PDF},
+}
+
+@Article{prandini06,
+  author       = {Prandini, Maria and Hu, Jianghai and Cassandras, C and Lygeros, J},
+  date         = {2006},
+  journaltitle = {Stochastic hybrid systems, Automation and Control Engineering Series},
+  title        = {Stochastic reachability: Theory and numerical approximation},
+  pages        = {107--138},
+  volume       = {24},
+  file         = {Stochastic reachability:literature/SHS_Reachability_Chapter_06.pdf:PDF},
+}
+
+@Article{xu18,
+  author       = {XU, XIONG and WANG, SHULING and ZHAN, BOHUA and ZHAN, NAIJUN},
+  date         = {2018},
+  journaltitle = {ACM Trans. Softw. Eng. Methodol},
+  title        = {Semantics Foundation for Cyber-Physical Systems Using Higher-Order UTP},
+  number       = {1},
+  volume       = {1},
+  file         = {:literature/tosem22.pdf:PDF},
+}
+
+@InProceedings{holzl12,
+  author       = {H{\"o}lzl, Johannes and Nipkow, Tobias},
+  booktitle    = {International Conference on Tools and Algorithms for the Construction and Analysis of Systems},
+  date         = {2012},
+  title        = {Verifying pCTL model checking},
+  organization = {Springer},
+  pages        = {347--361},
+  file         = {pctl:literature/pctl.pdf:PDF},
+}
+
+@Book{fristedt13,
+  author    = {Fristedt, Bert E and Gray, Lawrence F},
+  date      = {2013},
+  title     = {A modern approach to probability theory},
+  publisher = {Springer Science \& Business Media},
+}
+
+@InProceedings{holzl13,
+  author       = {H{\"o}lzl, Johannes and Immler, Fabian and Huffman, Brian},
+  booktitle    = {International Conference on Interactive Theorem Proving},
+  date         = {2013},
+  title        = {Type classes and filters for mathematical analysis in Isabelle/HOL},
+  organization = {Springer},
+  pages        = {279--294},
+  file         = {paper:literature/Hölzl2013_Chapter_TypeClassesAndFiltersForMathem.pdf:PDF},
+}
+
+@Article{immler12,
+  author       = {Immler, Fabian},
+  date         = {2012},
+  journaltitle = {Master's thesis, TU M{\"u}nchen (October 2012)},
+  title        = {Generic construction of probability spaces for paths of stochastic processes in Isabelle/HOL},
+  file         = {Immler masters:literature/immler_masters.pdf:PDF},
+}
+
+@InProceedings{eberl15,
+  author       = {Eberl, Manuel and H{\"o}lzl, Johannes and Nipkow, Tobias},
+  booktitle    = {European Symposium on Programming Languages and Systems},
+  date         = {2015},
+  title        = {A verified compiler for probability density functions},
+  organization = {Springer},
+  pages        = {80--104},
+  file         = {:literature/Eberl2015_Chapter_AVerifiedCompilerForProbabilit.pdf:PDF},
+}
+
+@PhdThesis{holzlphd,
+  author      = {H{\"o}lzl, Johannes},
+  date        = {2013},
+  institution = {Universit{\"a}t M{\"u}nchen},
+  title       = {Construction and Stochastic Applications of Measure Spaces in Higher-Order Logic},
+  file        = {:literature/holzl_phd.pdf:PDF},
+  groups      = {Isabelle/HOL},
+}
+
+@Article{blackmore08,
+  author       = {Blackmore, Lars and Rajamanoharan, Senthooran and Williams, Brian C},
+  date         = {2008},
+  journaltitle = {IEEE Transactions on Automatic Control},
+  title        = {Active estimation for jump Markov linear systems},
+  number       = {10},
+  pages        = {2223--2236},
+  volume       = {53},
+  file         = {:literature/Active_Estimation_for_Jump_Markov_Linear_Systems.pdf:PDF},
+  publisher    = {IEEE},
+}
+
+@InProceedings{liu10,
+  author       = {Liu, Jiang and Lv, Jidong and Quan, Zhao and Zhan, Naijun and Zhao, Hengjun and Zhou, Chaochen and Zou, Liang},
+  booktitle    = {Asian Symposium on Programming Languages and Systems},
+  date         = {2010},
+  title        = {A calculus for hybrid CSP},
+  organization = {Springer},
+  pages        = {1--15},
+}
+
+@InProceedings{balluchi06,
+  author     = {Balluchi, Andrea and Casagrande, Alberto and Collins, Pieter and Ferrari, Alberto and Villa, Tiziano and Sangiovanni-Vincentelli, Alberto L.},
+  booktitle  = {In: {Proceedings} of the {International} {Syposium} on {Mathematical} {Theory} of {Networks} and {Systems}. (2006},
+  date       = {2006},
+  title      = {Ariadne: a framework for reachability analysis of hybrid automata},
+  abstract   = {In this paper we introduce the problem of reachability analysis of hybrid automata to decide safety properties. Then we describe ARIADNE, an in-progress open environment to design algorithms for computing with hybrid automata. We show that ARIADNE relies on a rigorous computable analysis theory to represent geometric objects, in order to achieve provable approximation bounds along the computations. The proposed tool differs from existing ones because it relies on a sound theoretical basis for the semantics of operators in continuous space and time, making available exact and approximate, but error-bounded operations on geometric points and sets. Currently the geometry module is substantially completed, and work is in progress on the evaluation module. As a first application, we will use ARIADNE to compute the reachable sets of a challenging collection of benchmarks whose safety properties have practical interest.},
+  file       = {Citeseer - Full Text PDF:http\://citeseerx.ist.psu.edu/viewdoc/download\;jsessionid=C5B34B281CEF936896621BFC153F50FC?doi=10.1.1.103.6516&rep=rep1&type=pdf:application/pdf},
+  shorttitle = {Ariadne},
+}
+
+@Book{klebaner12,
+  author    = {Klebaner, Fima C},
+  date      = {2012},
+  title     = {Introduction to stochastic calculus with applications},
+  publisher = {World Scientific Publishing Company},
+}
+
+@Article{Lebeltel2004,
+  author       = {Lebeltel, Olivier and Bessière, Pierre and Diard, Julien and Mazer, Emmanuel},
+  date         = {2004-01},
+  journaltitle = {Autonomous Robots},
+  title        = {Bayesian {Robot} {Programming}},
+  doi          = {10.1023/B:AURO.0000008671.38949.43},
+  issn         = {1573-7527},
+  language     = {en},
+  number       = {1},
+  pages        = {49--79},
+  url          = {https://doi.org/10.1023/B:AURO.0000008671.38949.43},
+  urldate      = {2022-07-21},
+  volume       = {16},
+  abstract     = {We propose a new method to program robots based on Bayesian inference and learning. It is called BRP for Bayesian Robot Programming. The capacities of this programming method are demonstrated through a succession of increasingly complex experiments. Starting from the learning of simple reactive behaviors, we present instances of behavior combination, sensor fusion, hierarchical behavior composition, situation recognition and temporal sequencing. This series of experiments comprises the steps in the incremental development of a complex robot program. The advantages and drawbacks of BRP are discussed along with these different experiments and summed up as a conclusion. These different robotics programs may be seen as an illustration of probabilistic programming applicable whenever one must deal with problems based on uncertain or incomplete knowledge. The scope of possible applications is obviously much broader than robotics.},
+  file         = {Full Text PDF:https\://link.springer.com/content/pdf/10.1023%2FB%3AAURO.0000008671.38949.43.pdf:application/pdf},
+  keywords     = {Bayesian robot programming, control of autonomous robots, computational architecture for autonomous systems, theory of autonomous systems},
+}
+
+@Book{clarke18,
+  author    = {Clarke, Edmund M and Henzinger, Thomas A and Veith, Helmut and Bloem, Roderick and others},
+  date      = {2018},
+  title     = {Handbook of model checking},
+  publisher = {Springer},
+  volume    = {10},
+}
+
+@InProceedings{jakobi95,
+  author    = {Jakobi, Nick and Husbands, Phil and Harvey, Inman},
+  booktitle = {Advances in Artificial Life},
+  date      = {1995},
+  title     = {Noise and the reality gap: The use of simulation in evolutionary robotics},
+  editor    = {Mor{\'a}n, Federico and Moreno, Alvaro and Merelo, Juan Juli{\'a}n and Chac{\'o}n, Pablo},
+  isbn      = {978-3-540-49286-3},
+  location  = {Berlin, Heidelberg},
+  pages     = {704--720},
+  publisher = {Springer Berlin Heidelberg},
+  abstract  = {The pitfalls of naive robot simulations have been recognised for areas such as evolutionary robotics. It has been suggested that carefully validated simulations with a proper treatment of noise may overcome these problems. This paper reports the results of experiments intended to test some of these claims. A simulation was constructed of a two-wheeled Khepera robot with IR and ambient light sensors. This included detailed mathematical models of the robot-environment interaction dynamics with empirically determined parameters. Artificial evolution was used to develop recurrent dynamical network controllers for the simulated robot, for obstacle-avoidance and light-seeking tasks, using different levels of noise in the simulation. The evolved controllers were down-loaded onto the real robot and the correspondence between behaviour in simulation and in reality was tested. The level of correspondence varied according to how much noise was used in the simulation, with very good results achieved when realistic quantities were applied. It has been demonstrated that it is possible to develop successful robot controllers in simulation that generate almost identical behaviours in reality, at least for a particular class of robot-environment interaction dynamics.},
+}
+
+@Book{oksendal2013,
+  author    = {Oksendal, Bernt},
+  date      = {2013},
+  title     = {Stochastic differential equations: an introduction with applications},
+  publisher = {Springer Science \& Business Media},
+}
+
+@Article{Ammer2021,
+  author       = {Thomas Ammer and Peter Lammich},
+  date         = {2021-11},
+  journaltitle = {Archive of Formal Proofs},
+  title        = {van Emde Boas Trees},
+  issn         = {2150-914x},
+  note         = {\url{https://isa-afp.org/entries/Van_Emde_Boas_Trees.html}, Formal proof development},
+}
+
+@Article{echenim20,
+  author       = {Echenim, Mnacho and Guiol, Hervé and Peltier, Nicolas},
+  date         = {2020-04},
+  journaltitle = {Journal of Automated Reasoning},
+  title        = {Formalizing the {Cox}–{Ross}–{Rubinstein} {Pricing} of {European} {Derivatives} in {Isabelle}/{HOL}},
+  doi          = {10.1007/s10817-019-09528-w},
+  issn         = {1573-0670},
+  language     = {en},
+  number       = {4},
+  pages        = {737--765},
+  url          = {https://doi.org/10.1007/s10817-019-09528-w},
+  urldate      = {2022-08-31},
+  volume       = {64},
+  abstract     = {We formalize in the proof assistant Isabelle essential basic notions and results in financial mathematics. We provide generic formal definitions of concepts such as markets, portfolios, derivative products, arbitrages or fair prices, and we show that, under the usual no-arbitrage condition, the existence of a replicating portfolio for a derivative implies that the latter admits a unique fair price. Then, we provide a formalization of the Cox–Rubinstein model and we show that the market is complete in this model, i.e., that every derivative product admits a replicating portfolio. This entails that in this model, every derivative product admits a unique fair price. In addition, we provide Isabelle functions to compute the fair price of some derivative products.},
+  file         = {:literature/Echenim2020.pdf:PDF},
+  groups       = {Isabelle/HOL},
+  keywords     = {Proof assistants, Financial mathematics, Discrete pricing, Isabelle/HOL},
+}
+
+@Article{lavaei21,
+  author       = {Lavaei, Abolfazl and Soudjani, Sadegh and Abate, Alessandro and Zamani, Majid},
+  date         = {2021},
+  journaltitle = {arXiv preprint arXiv:2101.07491},
+  title        = {Automated verification and synthesis of stochastic hybrid systems: A survey},
+  file         = {:literature/Lavaei2021.pdf:PDF},
+  groups       = {Stochastic hybrid systems},
+}
+
+@Book{klenke20,
+  author    = {Klenke, Achim},
+  date      = {2020},
+  title     = {Probability theory: a comprehensive course},
+  edition   = {3rd},
+  publisher = {Springer Science \& Business Media},
+  file      = {:literature/978-1-84800-048-3.pdf:PDF},
+}
+
+@InProceedings{sledgehammer,
+  author       = {B{\"o}hme, Sascha and Nipkow, Tobias},
+  booktitle    = {Automated Reasoning: 5th International Joint Conference, IJCAR 2010, Edinburgh, UK, July 16-19, 2010. Proceedings 5},
+  date         = {2010},
+  title        = {Sledgehammer: judgement day},
+  organization = {Springer},
+  pages        = {107--121},
+}
+
+@InProceedings{haftmann09,
+  author       = {Haftmann, Florian and Wenzel, Makarius},
+  booktitle    = {Types for Proofs and Programs: International Conference, TYPES 2008 Torino, Italy, March 26-29, 2008 Revised Selected Papers},
+  date         = {2009},
+  title        = {Local theory specifications in Isabelle/Isar},
+  organization = {Springer},
+  pages        = {153--168},
+}
+
+@Article{osborne59,
+  author       = {Osborne, Maury FM},
+  date         = {1959},
+  journaltitle = {Operations research},
+  title        = {Brownian motion in the stock market},
+  number       = {2},
+  pages        = {145--173},
+  volume       = {7},
+  publisher    = {INFORMS},
+}
+
+@Article{jang04,
+  author       = {Jang, Seok Pil and Choi, Stephen US},
+  date         = {2004},
+  journaltitle = {Applied physics letters},
+  title        = {Role of Brownian motion in the enhanced thermal conductivity of nanofluids},
+  number       = {21},
+  pages        = {4316--4318},
+  volume       = {84},
+  publisher    = {American Institute of Physics},
+}
+
+@Comment{jabref-meta: databaseType:biblatex;}
+
+@Comment{jabref-meta: grouping:
+0 AllEntriesGroup:;
+1 StaticGroup:Robotics\;0\;1\;0x8a8a8aff\;\;\;;
+2 KeywordGroup:Kalman filters\;0\;title\;Kalman\;0\;0\;0\;0x8a8a8aff\;\;\;;
+1 StaticGroup:Robotics Verification\;0\;1\;0x8a8a8aff\;\;\;;
+2 StaticGroup:Keymaera X\;0\;1\;0x8a8a8aff\;\;\;;
+2 StaticGroup:Stochastic hybrid systems\;0\;0\;0x8a8a8aff\;\;\;;
+2 StaticGroup:Hybrid Systems\;0\;1\;0x8a8a8aff\;\;\;;
+1 StaticGroup:UTP\;0\;1\;0x8a8a8aff\;\;\;;
+1 StaticGroup:Isabelle/HOL\;0\;1\;0x8a8a8aff\;\;\;;
+}
