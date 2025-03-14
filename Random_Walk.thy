@@ -357,8 +357,67 @@ lemma "(emeasure (stream_space bool_measure) {x\<in>space (stream_space bool_mea
   apply (subst bool_stream.nn_integral_stream_space)
   oops
 
+  term sum
 
-  find_theorems scylinder
+lemma PiE_Collect: "PiE A B = {f. (\<forall> x\<in>A. f x \<in> B x) \<and> (\<forall> x\<in>-A. f x = undefined)}"
+  by auto
+
+term "(\<lambda> f. sum f C) ` PiE A B"
+
+find_theorems sum PiE
+
+lemma sum_as_sum_list: "sum f {0..n} = sum_list (map f [0..<n+1])"
+  by (metis atLeastAtMost_upt distinct_upt semiring_norm(174) sum_list_distinct_conv_sum_set)
+
+lemma f1: "(\<lambda> f::nat\<Rightarrow>'b::ordered_euclidean_space. sum f {0..n}) ` PiE {0..n} B 
+           = (\<lambda> f. sum f {0..n}) ` {f. (\<forall>x\<in>{0..n}. f x \<in> B x)}"
+  apply (simp add: PiE_Collect image_Collect)
+  apply auto
+  apply (rule_tac x="\<lambda> x. if x \<in> {0..n} then f x else undefined" in exI)
+  apply auto
+  done
+
+term sum_list
+
+lemma f2: 
+  "(\<lambda> f::nat\<Rightarrow>'b::ordered_euclidean_space. sum f {0..n}) ` PiE {0..n} B 
+   = (\<lambda> f. sum_list (map f [0..<n+1])) ` {f. (\<forall>x\<in>{0..n}. f x \<in> B x)}"
+  by (simp add: f1, simp add: sum_as_sum_list)
+
+lemma f3: 
+  "(\<lambda> f::nat\<Rightarrow>'b::ordered_euclidean_space. sum f {0..n}) ` PiE {0..n} B 
+   = sum_list ` {map f [0..<n+1]| f. (\<forall>x\<in>{0..n}. f x \<in> B x)}"
+  apply (simp add: f2, auto simp add: image_Collect)
+  by force
+
+lemma "(\<lambda> f::nat\<Rightarrow>real. sum f {0..0}) ` PiE {0..0} ((\<lambda>x. undefined)(0::nat := {1::nat}, 1 := {1})) = {1}"
+  apply (simp add: PiE_Collect)
+  apply (simp add: image_def)
+  apply auto
+  apply (rule_tac x="\<lambda> x. if x = 0 then 1 else undefined" in exI)
+  apply simp
+  done
+
+value "map (sum id \<circ> (\<lambda>x. undefined)(0::nat := {1::nat}, 1 := {1})) [0..<1]"
+
+lemma f4: 
+  "(\<lambda> f::nat\<Rightarrow>real. sum f {0..n}) ` PiE {0..n} B 
+   = set (map (sum id \<circ> B) [0..<n+1])"
+  nitpick
+  apply (simp add: sum_as_sum_list)
+  apply auto
+  apply (simp add: f2, auto simp add: image_Collect sum_as_sum_list)
+
+
+declare [[show_sorts]]
+
+lemma "(\<lambda> f::nat\<Rightarrow>'b::ordered_euclidean_space. sum f A) ` PiE A B = sum id ` (B ` A)"
+  apply (simp add: f1)
+  apply (auto simp add: image_def)
+  apply (rule_tac x="\<lambda> x. if x \<in> A then f x else undefined" in exI)
+  apply auto
+  done
+
 
 (* Related to Cartesian product, relate to the pair measure *)
 lemma (in prob_space) emeasure_stream_space_scylinder: 
@@ -366,8 +425,22 @@ lemma (in prob_space) emeasure_stream_space_scylinder:
   apply simp
   sorry
 
-lemma "{x\<in> space (stream_space bool_measure). x !! i} = scylinder UNIV (replicate i UNIV @ [{True}])"
-  sorry
+lemma stream_snth_Suc: "{x \<in> space (stream_space bool_measure). x !! Suc i} = (\<lambda> (x, xs). x ## xs) ` (UNIV \<times> {x \<in> space (stream_space bool_measure). x !! i})"
+  apply auto
+  apply (smt (z3) SigmaI UNIV_def mem_Collect_eq pair_imageI space_stream_space stream.sel(2) streams.simps)
+  apply (simp add: space_stream_space)
+  done
+
+lemma stream_space_snth_scylinder: "{x\<in> space (stream_space bool_measure). x !! i} = scylinder UNIV (replicate i UNIV @ [{True}])"
+  apply (induct i)
+   apply (simp add: space_stream_space)
+  apply (simp only: stream_snth_Suc)
+  apply (simp add: set_eq_iff)
+  apply safe
+   apply auto[1]
+  apply simp
+  apply (metis UNIV_I mem_Sigma_iff pair_imageI stream.exhaust stream.sel(2))
+  done
 
 lemma "ennreal (bool_stream.prob (scylinder UNIV (replicate i UNIV @ [{True}]))) = ennreal 0.5"
 proof (induct i)
