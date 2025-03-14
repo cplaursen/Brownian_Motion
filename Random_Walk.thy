@@ -40,6 +40,54 @@ next
   qed
 qed
 
+(*
+lemma nn_integral_scale_measure:
+  fixes f :: "'a \<Rightarrow> ennreal"
+  assumes "f \<in> borel_measurable M" "n \<ge> 0" "AE x in M. 0 \<le> f x"
+  shows "integral\<^sup>N (scale_measure (ennreal n) M) f = n * integral\<^sup>N M f"
+*)
+
+lemma "x ## to_stream f = to_stream (\<lambda> i. if i = 0 then x else f (i - 1))"
+proof -
+  have "case_nat = (\<lambda>a f n. if n = 0 then a::'a else f (n - 1))"
+    by (metis (no_types) Nitpick.case_nat_unfold)
+  then show ?thesis
+    by (metis (no_types) to_stream_nat_case)
+qed
+
+lemma PiM_iter':
+  assumes "sequence_space M" "pair_sigma_finite (Pi\<^sub>M UNIV (\<lambda>i::nat. M)) M"
+  shows "distr ((\<Pi>\<^sub>M i::nat\<in>UNIV. M) \<Otimes>\<^sub>M M) (\<Pi>\<^sub>M i::nat\<in>UNIV. M) (\<lambda> (x, y). case_nat y x) = (\<Pi>\<^sub>M i::nat\<in>UNIV. M)" (is "?lhs = ?rhs")
+using assms
+proof -
+  have "?lhs
+       = distr (distr (M \<Otimes>\<^sub>M Pi\<^sub>M UNIV (\<lambda>i. M)) (Pi\<^sub>M UNIV (\<lambda>i. M) \<Otimes>\<^sub>M M) (\<lambda>(x, y). (y, x))) (Pi\<^sub>M UNIV (\<lambda>i. M)) (\<lambda>(x, y). case_nat y x)"
+    using assms(2) pair_sigma_finite.distr_pair_swap by fastforce
+  also have "... = distr (M \<Otimes>\<^sub>M Pi\<^sub>M UNIV (\<lambda>i. M)) (Pi\<^sub>M UNIV (\<lambda>i. M)) ((\<lambda>(x, y). case_nat y x) \<circ> (\<lambda>(x, y). (y, x)))"
+    by (simp add: distr_distr)
+  also have "... = distr (M \<Otimes>\<^sub>M Pi\<^sub>M UNIV (\<lambda>i. M)) (Pi\<^sub>M UNIV (\<lambda>i. M)) ((\<lambda>(x, y). case_nat x y))"
+    by (simp add: comp_def split_def)
+  also have "... = ?rhs"
+    using assms(1) sequence_space.PiM_iter by blast
+  finally show ?thesis .
+qed
+
+
+lemma stream_space_eq_distr_prod:
+  assumes "sequence_space M" "pair_sigma_finite (Pi\<^sub>M UNIV (\<lambda>i::nat. M)) M"
+  shows "stream_space M = distr ((Pi\<^sub>M UNIV (\<lambda>i. M)) \<Otimes>\<^sub>M M) (stream_space M) (\<lambda> X. to_stream ((\<lambda>(\<omega>, s). case_nat s \<omega>) X))" (is "?lhs = ?rhs")
+proof -
+  have "?rhs = distr ((Pi\<^sub>M UNIV (\<lambda>i. M)) \<Otimes>\<^sub>M M) (stream_space M) (to_stream \<circ> (\<lambda>(\<omega>, s). case_nat s \<omega>))"
+    by (metis o_apply)
+  also have "... = distr (distr (Pi\<^sub>M UNIV (\<lambda>i. M) \<Otimes>\<^sub>M M) (Pi\<^sub>M UNIV (\<lambda>i. M)) (\<lambda>(\<omega>, s). case_nat s \<omega>)) (stream_space M) to_stream"
+    by (simp add: distr_distr)
+  also have "... = distr (Pi\<^sub>M UNIV (\<lambda>i. M)) (stream_space M) to_stream"
+    by (simp add: PiM_iter' assms(1) assms(2))
+  also have "... = ?lhs"
+    by (metis stream_space_eq_distr)
+  finally show ?thesis ..
+qed
+
 lemma (in prob_space) integral_stream_space:
   fixes f :: "'a stream \<Rightarrow> 'b::{banach, second_countable_topology}"
   assumes "integrable (stream_space M) f"
@@ -47,6 +95,31 @@ lemma (in prob_space) integral_stream_space:
 proof -
   interpret S: sequence_space M ..
   interpret P: pair_sigma_finite M "\<Pi>\<^sub>M i::nat\<in>UNIV. M" ..
+
+  have "sequence_space M"
+    using S.sequence_space_axioms by fastforce
+
+  have "pair_sigma_finite M (\<Pi>\<^sub>M i::nat\<in>UNIV. M)"
+    using P.pair_sigma_finite_axioms by force
+
+  have 1:"(\<lambda>X. to_stream (case X of (\<omega>, s) \<Rightarrow> case_nat s \<omega>)) = (\<lambda>(x, y). (y ## to_stream x))"
+    using to_stream_nat_case by fastforce
+
+  have ss: "stream_space M = distr (Pi\<^sub>M UNIV (\<lambda>i. M) \<Otimes>\<^sub>M M) (stream_space M) (\<lambda>(x, y). (y ## to_stream x))"
+    using S.sequence_space_axioms P.pair_sigma_finite_axioms apply (subst stream_space_eq_distr_prod)
+    apply simp
+     apply (simp add: pair_sigma_finite_def)
+    apply (simp add:1)
+    done
+
+  have "integrable (distr (Pi\<^sub>M UNIV (\<lambda>i. M) \<Otimes>\<^sub>M M) (stream_space M) (\<lambda>(x, y). y ## to_stream x)) f"
+    using assms ss by presburger
+
+  hence 2: "integrable (Pi\<^sub>M UNIV (\<lambda>i. M) \<Otimes>\<^sub>M M) (\<lambda>x. f (case x of (x, y) \<Rightarrow> y ## to_stream x))"
+    by (rule_tac integrable_distr[where T="\<lambda>(x, y). y ## to_stream x" and f=f and M'="stream_space M"], simp_all)
+
+  hence 3:"integrable (Pi\<^sub>M UNIV (\<lambda>i. M) \<Otimes>\<^sub>M M) (\<lambda>(x, y). f (y ## to_stream x))"
+    by (simp add: prod.case_eq_if split_def)
 
   have "(\<integral>X. f X \<partial>stream_space M) = (\<integral>X. f (to_stream X) \<partial>S.S)"
     using assms by (subst stream_space_eq_distr) (simp add: integral_distr)
@@ -56,9 +129,8 @@ proof -
     apply (subst P.integral_fst')
     using assms apply auto
     apply (subst P.integrable_product_swap_iff[symmetric])
-    apply (simp add: to_stream_nat_case)
-    using integrable_distr stream_space_eq_distr  
-    sorry (* there's an isomorphism here *)
+    apply (simp add: to_stream_nat_case 3)
+    done
   also have "\<dots> = (\<integral>x. \<integral>X. f (x ## to_stream X) \<partial>S.S \<partial>M)"
     by (auto simp: to_stream_nat_case)
   also have "\<dots> = (\<integral>x. \<integral>X. f (x ## X) \<partial>stream_space M \<partial>M)"
@@ -66,7 +138,7 @@ proof -
     by (simp add: integral_distr cong: Bochner_Integration.integral_cong)
   finally show ?thesis .
 qed
-  
+
 section \<open> Probability measure on booleans \<close>
 definition bool_measure :: "bool measure" where
 "bool_measure \<equiv> scale_measure (ennreal (1/2)) (count_space UNIV)"
@@ -83,6 +155,14 @@ interpretation bool_space: prob_space bool_measure
   by (metis divide_ennreal_def ennreal_divide_self 
       ennreal_less_top ennreal_numeral mult.commute zero_neq_numeral)
 
+lemma bool_prob_True: "bool_space.prob {True} = 1/2"
+  unfolding bool_measure_def
+  by (simp only: measure_scale_measure, simp)
+
+lemma bool_prob_False: "bool_space.prob {False} = 1/2"
+  unfolding bool_measure_def
+  by (simp only: measure_scale_measure, simp)
+
 lemma integrable_bool_measure[simp]:
  "integrable bool_measure (f :: bool \<Rightarrow> 'a::{second_countable_topology, banach})"
   unfolding bool_measure_def
@@ -96,6 +176,15 @@ lemma integral_bool_measure:
   apply (subst integral_scale_measure)
     apply (auto simp: integrable_count_space)
   by (simp add: UNIV_bool infsetsum_def[symmetric])
+
+lemma integral_pos_bool_measure: 
+  fixes f:: "bool \<Rightarrow> ennreal"
+  shows "(\<integral>\<^sup>+\<omega>. f \<omega> \<partial>bool_measure) = (f True + f False) / 2"
+  unfolding bool_measure_def
+  apply (subst integral_scale_measure)
+    apply (auto simp: integrable_count_space)
+  by (simp add: UNIV_bool infsetsum_def[symmetric])
+
 
 section \<open> Random walk \<close>
 interpretation bool_prod: product_prob_space "(\<lambda>_. bool_measure)" UNIV
@@ -116,6 +205,26 @@ lemma coin_tosses_source[simp]: "proc_source coin_tosses = stream_space bool_mea
   and coin_tosses_process[simp]: "process coin_tosses = (\<lambda>n \<omega>. if \<omega> !! n then 1 else -1)"
   unfolding coin_tosses_def by simp_all
 
+
+lemma "distr (Pi\<^sub>M UNIV (\<lambda>i. bool_measure)) (Pi\<^sub>M UNIV (\<lambda>i. sigma UNIV UNIV)) ((\<lambda>x. \<lambda>i\<in>UNIV. if x !! i then 1::real else - 1) \<circ> to_stream) =
+    Pi\<^sub>M UNIV (\<lambda>i. distr (Pi\<^sub>M UNIV (\<lambda>i. bool_measure)) (sigma UNIV UNIV) ((\<lambda>\<omega>. if \<omega> !! i then 1 else - 1) \<circ> to_stream))" (is "?lhs = ?rhs")
+proof -
+  have "?lhs = distr (distr (Pi\<^sub>M UNIV (\<lambda>i. bool_measure)) (stream_space bool_measure) to_stream) (Pi\<^sub>M UNIV (\<lambda>i::nat. sigma UNIV UNIV))
+     (\<lambda>x. \<lambda>i\<in>UNIV. if x !! i then 1::real else - (1::real))"
+    apply (subst distr_distr[where N="stream_space bool_measure", THEN sym])
+      apply simp_all
+    apply measurable
+    done
+  also have "... = distr (stream_space bool_measure) (Pi\<^sub>M UNIV (\<lambda>i::nat. sigma UNIV UNIV)) (\<lambda>x. \<lambda>i\<in>UNIV. if x !! i then 1::real else - (1::real))"
+    by (metis stream_space_eq_distr)
+  oops
+
+lemma to_stream_snth [simp]: "to_stream f !! i = f i"
+  by (simp add: to_stream_def)
+
+lemma to_stream_comp_elim: "(\<lambda>x. \<lambda>i\<in>UNIV. if x !! i then 1 else - 1) \<circ> to_stream = (\<lambda>x. \<lambda>i\<in>UNIV. if x i then 1 else - 1)"
+  by (auto simp add: fun_eq_iff)
+
 lemma independent_coin_tosses: "bool_stream.indep_vars (\<lambda>_. sigma UNIV UNIV) (\<lambda>n \<omega>. if \<omega> !! n then 1 else (-1:: real)) UNIV"
   apply (simp add: bool_stream.indep_vars_iff_distr_eq_PiM)
   apply (subst stream_space_eq_distr)
@@ -123,6 +232,7 @@ lemma independent_coin_tosses: "bool_stream.indep_vars (\<lambda>_. sigma UNIV U
     apply measurable
     apply (simp add: measurable_ident_sets sets_stream_space_cong)
    apply simp
+  apply (simp add: to_stream_comp_elim)
   apply (subst stream_space_eq_distr)
   apply (subst distr_distr)
     apply simp_all
@@ -140,12 +250,184 @@ lemma random_walk_measurable[measurable]:
 definition random_walk :: "(nat, bool stream, real) stochastic_process" where
 "random_walk \<equiv> bool_stream.process_of borel UNIV (\<lambda>n \<omega>. \<Sum>j = 1..n. if \<omega> !! j then 1 else -1) 0"
 
-lemma source_random_walk[simp]: "proc_source random_walk = stream_space bool_measure"
-  and target_random_walk[simp]: "proc_target random_walk = borel"
-  and process_random_walk[simp]: "process random_walk = (\<lambda>n \<omega>. \<Sum>j = 1..n. if \<omega> !! j then 1 else -1)"
-  unfolding random_walk_def using random_walk_measurable sorry
+lemma source_random_walk: "proc_source random_walk = stream_space bool_measure"
+  and target_random_walk: "proc_target random_walk = borel"
+  and process_random_walk: "process random_walk = (\<lambda>n \<omega>. \<Sum>j = 1..n. if \<omega> !! j then 1 else -1)"
+  unfolding random_walk_def using random_walk_measurable by simp_all
+
+lemma sum_bound: "abs(\<Sum>j = Suc 0..n. if x !! j then 1 else - 1) \<le> real n"
+  by (induct n, simp_all, linarith)
+
+lemma integrable_random_walk [simp]: "integrable (stream_space bool_measure) (process random_walk n)"
+  apply (rule bool_stream.integrable_const_bound[where B="n"])
+   apply (simp_all add: sum_bound process_random_walk)
+  using One_nat_def random_walk_measurable apply presburger
+  done
+
+lemma integrable_random_walk_sum [simp]: "integrable (stream_space bool_measure) (\<lambda>x. if stl x !! n then 1::real else - 1)"
+  apply (rule bool_stream.integrable_const_bound[where B="1"])
+   apply simp_all
+  apply measurable
+  apply (simp add: measurable_ident_sets sets_stream_space_cong)
+  done
+
+find_theorems "distributed (stream_space ?M)" lborel
+
+find_theorems "integral\<^sup>L (stream_space ?M)"
+
+term "integral\<^sup>L (stream_space bool_measure)"
+
+find_theorems "bool_stream.expectation"
+
+find_theorems integrable stream_space
+
+find_theorems "distr (stream_space ?M)"
+
+find_theorems stream_space std_normal_distribution
+
+find_theorems bool_space.prob
+
+find_theorems measure scale_measure
+
+
+lemma "bool_stream.expectation (\<lambda>X. if X !! n then 1::real else - 1) = 0"
+  find_theorems bool_stream.expectation
+  apply (rule bool_stream.standard_normal_distributed_expectation)
+  apply (simp add: distributed_def)
+  apply auto
+  apply (induct n)
+    apply simp
+  oops
+
+  find_theorems lebesgue_integral If
+
+  thm Bochner_Integration.integral_add
+
+  term of_bool
+
+  term indicator
+            
+  find_theorems "distr (stream_space ?M) ?f ?X = ?K"
+
+  find_theorems If indicator
+
+lemma If_indicator: "(\<lambda>x. if P x then f x :: 'a::real_vector else g x) = (\<lambda>x. indicator {x. P x} x *\<^sub>R f x + indicator {x. \<not>P x} x *\<^sub>R g x)"
+  by (auto)
+
+find_theorems integrable indicator
+
+find_theorems "integral\<^sup>L" "indicator"
+
+(*
+lemma "A \<in> sets M \<Longrightarrow> integral\<^sup>L (\<lambda> x. indicator A x *\<^sub>R f x \<partial>M) = \<integral>\<^sup>L x\<in>A. f x \<partial>M"
+*)
+
+find_theorems bool_stream.indep_set
+
+
+term "prob_space.indep_vars"
+
+
+find_theorems "bool_stream.prob" "bool_stream.indep_vars"
+
+term case_bool
+
+lemma "space (stream_space bool_measure) = UNIV"
+  by (simp add: space_stream_space)
+
+term
+
+thm prob_space.prob_stream_space
+
+thm bool_stream.prob_stream_space
+
+find_theorems "integral\<^sup>L" bool_measure
+
+
+find_theorems bool_stream.prob
+
+lemma "(emeasure (stream_space bool_measure) {x\<in>space (stream_space bool_measure). shd x}) = ennreal 0.5"
+  thm bool_space.emeasure_stream_space
+  apply (subst bool_space.emeasure_stream_space)
+   apply measurable
+   defer
+  apply simp
+  thm bool_stream.nn_integral_stream_space
+  
+  apply (subst bool_stream.nn_integral_stream_space)
+  oops
+
+
+  find_theorems scylinder
+
+(* Related to Cartesian product, relate to the pair measure *)
+lemma (in prob_space) emeasure_stream_space_scylinder: 
+  "measure (stream_space M) (scylinder S (A#X)) = measure M A * measure (stream_space M) (scylinder S X)"
+  apply simp
+  sorry
+
+lemma "{x\<in> space (stream_space bool_measure). x !! i} = scylinder UNIV (replicate i UNIV @ [{True}])"
+  sorry
+
+lemma "ennreal (bool_stream.prob (scylinder UNIV (replicate i UNIV @ [{True}]))) = ennreal 0.5"
+proof (induct i)
+  case 0
+  then show ?case
+    apply (simp del: scylinder.simps)
+    apply (subst prob_space.emeasure_stream_space_scylinder)
+     defer
+     apply (simp add: bool_prob_True)
+    using bool_space.prob_space apply simp
+  next
+  case (Suc i)
+  then show ?case
+    apply (simp del: scylinder.simps)
+    apply (subst prob_space.emeasure_stream_space_scylinder)
+    defer
+    using bool_space.prob_space apply fastforce
+    
+
+  qed
+
+lemma "ennreal (bool_stream.prob ({x\<in> space (stream_space bool_measure). x !! i})) = ennreal 0.5"
+  apply (subst prob_space.prob_stream_space)
+    apply (simp add: Random_Walk.bool_prod.prob_space)
+   defer
+  apply (unfold bool_measure_def)
+  apply (subst nn_integral_scale_measure)
+    apply (fold bool_measure_def)
+    apply measurable
+   apply (subst nn_integral_count_space_finite)
+    apply simp
+  apply (simp add: UNIV_bool)
+  
+    apply simp
+
+
+lemma "bool_stream.prob ({x. x !! i} \<inter> space (stream_space bool_measure)) = 0.5"
+  apply (simp add: space_stream_space)
+  apply (subst bool_stream.indep_setD)
+     apply (simp_all)
+   apply (simp add: bool_stream.indep_set_def bool_stream.indep_sets_def)
+  apply rule
+
+lemma "bool_stream.expectation (\<lambda>\<omega>. if \<omega> !! i then 1::real else - 1) = 0"
+  apply (subst If_indicator)
+  apply (subst Bochner_Integration.integral_add)
+    apply simp_all
+  defer
+    defer
+  apply auto
+    apply (subst Bochner_Integration.integrable_real_indicator)
+      
+  apply (subst integral_distr[where g="\<lambda> \<omega>. \<omega> !! i" and f="\<lambda> b. if b then 1 else -1" and M="stream_space bool_measure" and N="bool_measure", THEN sym])
+  apply simp
+  apply (simp add: borel_measurable_const measurable_If)
 
 lemma "bool_stream.expectation (random_walk n) = 0"
+  apply (simp add: process_random_walk)
+  apply (subst Bochner_Integration.integral_sum)
+  defer
 proof (induct n)
   case 0
   then show ?case
@@ -157,16 +439,26 @@ proof (induct n)
 next
   case (Suc n)
   have *: "random_walk (Suc n) = (\<lambda>\<omega>. random_walk n \<omega> + (if \<omega> !! (Suc n) then 1 else -1))"
-    by auto
+    by (auto simp add: process_random_walk)
   have "bool_stream.expectation (random_walk (Suc n)) = bool_stream.expectation (random_walk n) + bool_stream.expectation (\<lambda>\<omega>. if \<omega> !! (Suc n) then 1 else -1)"
     apply (subst *)
     apply (rule Bochner_Integration.integral_add)
-    unfolding real_integrable_def
-     apply auto
-         apply (measurable, simp add: measurable_ident_sets sets_stream_space_cong)
+    using integrable_random_walk apply blast
+    apply simp
+    done
+  then show ?case
+    find_theorems bool_stream.expectation
+    using Suc apply simp
+    apply (simp add: bool_measure_def)
+    find_theorems scale_measure
+    apply (subst prob_space.integral_stream_space)
+    apply simp_all
+    using bool_space.prob_space_axioms apply fastforce
+    using integrable_random_walk_sum
+    apply (rule bool_stream.standard_normal_distributed_expectation)
+    
+    
     sorry
-    then show ?case
-      using Suc apply simp sorry
   qed
 
   thm vimage_algebra_def
